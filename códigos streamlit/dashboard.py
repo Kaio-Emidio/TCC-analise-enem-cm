@@ -1,4 +1,11 @@
 import streamlit as st
+import pandas as pd
+
+# --- Processamento dos dados --- #
+
+
+
+# --- Criação da página --- #
 
 st.set_page_config(
     page_title='Análise Temporal Notas do ENEM',
@@ -6,6 +13,13 @@ st.set_page_config(
 
 st.title('Análise Temporal Notas do ENEM')
 st.subheader('Média das notas em cada disciplina por ano')
+
+ano_selecionado = st.selectbox(
+    "Selecione um ano:",
+    ['2022','2023','2024']
+)
+
+st.write(f'O ano selecionado é o: {ano_selecionado}')
 
 colunas = st.columns(5)
 
@@ -24,7 +38,7 @@ with colunas[4]:
 
 st.header('Gráficos')
 
-ano_selecionado = st.slider('Selecione o ano de interesse', 2009, 2025, (2010, 2024))
+anos_selecionado = st.slider('Selecione o ano de interesse', 2009, 2025, (2010, 2024))
 
 st.multiselect(label='Selecione as áreas que deseja visualizar',
                options=['LC', 'CH', 'MT', 'CN', 'Redação'])
