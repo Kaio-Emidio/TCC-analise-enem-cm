@@ -2,7 +2,7 @@ import pandas as pd
 from config import Config
 
 class Filtrar:
-    def filtrar_arquivos():
+    def filtrar_colunas():
         arquivos = list(Config.PASTA_ENTRADA.glob("*.csv"))
 
         if not arquivos:

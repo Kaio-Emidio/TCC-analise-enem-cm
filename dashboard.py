@@ -5,7 +5,7 @@ from processamento_de_dados.Dados import Dados
 from processamento_de_dados.Filtrar import Filtrar
 from processamento_de_dados.CriarGrafico import CriarGrafico
 
-# Filtrar.filtrar_arquivos()
+# Filtrar.filtrar_colunas()
 
 st.set_page_config(
     page_title='Análise Temporal Notas do ENEM',
