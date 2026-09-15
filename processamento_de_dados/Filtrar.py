@@ -9,10 +9,11 @@ class Filtrar:
             print(f"Nenhum arquivo CSV encontrado em: '{Config.PASTA_ENTRADA}'")
 
         for arquivo in arquivos:
-            caminho_final = Config.PASTA_SAIDA / arquivo.name
+            # Define o caminho de saída trocando a extensão .csv por .parquet
+            caminho_final = Config.PASTA_SAIDA / f"{arquivo.stem}.parquet"
 
             if caminho_final.exists():
-                print(f"Ignorando '{arquivo.name}' (já processado).\n")
+                print(f"Ignorando '{arquivo.name}' (já processado como parquet).\n")
                 continue
 
             print(f"Processando '{arquivo.name}'...")
@@ -25,14 +26,12 @@ class Filtrar:
                 usecols=Config.COLUNAS_DE_INTERESSE,
             ).rename(columns=Config.NOVOS_NOMES)
 
-            # Exportação
-            tabela_filtrada.to_csv(
-                caminho_final, sep=";", index=False, encoding="utf-8-sig"
-            )
+            # Exportação para Parquet com compressão snappy (padrão do pandas, super rápida)
+            tabela_filtrada.to_parquet(caminho_final, index=False)
 
             # Impressão das colunas do arquivo recém-salvo
             colunas_finais = list(tabela_filtrada.columns)
-            print(f"✓ Concluído: '{arquivo.name}'")
+            print(f"✓ Concluído: '{caminho_final.name}'")
             print(f"  Colunas do arquivo final: {colunas_finais}\n")
 
     def filtrar_cidade(cidades: list, df: pd.DataFrame):

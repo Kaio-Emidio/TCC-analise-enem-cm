@@ -4,8 +4,8 @@ from processamento_de_dados.Filtrar import Filtrar
 
 class Dados:
     def ler_ano(ano):
-        caminho_arquivo = f"microdados_filtrados/microdados_enem_{ano}.csv"
-        df = pd.read_csv(caminho_arquivo, sep=';', encoding='utf-8-sig')
+        caminho_arquivo = f"microdados_filtrados/microdados_enem_{ano}.parquet"
+        df = pd.read_parquet(caminho_arquivo)
         return df
 
     def estatistica(df):
