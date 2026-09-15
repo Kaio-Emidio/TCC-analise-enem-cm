@@ -1,4 +1,3 @@
-
-Construção dos primeiros gráficos/.venv/
-
-microdados_brutos/
+__pycache__
+.venv
+.vscode
