@@ -1,4 +1,6 @@
 __pycache__
 .venv
 .vscode
-microdados_brutos/MICRODADOS_ENEM_2024.csv
+microdados_brutos/*
+microdados_filtrados/*
+teste.py
