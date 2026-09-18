@@ -49,11 +49,10 @@ with colunas[1]:
                 options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
                 default=['Ceará-Mirim', 'Natal'])
 
-    # anos_selecionado = st.slider('Selecione o ano de interesse', 2009, 2025, (2010, 2024))
     ano_inicio, ano_fim = st.slider(label='Selecione o ano de interesse',
-                                min_value=2022,
+                                min_value=2009,
                                 max_value=2024,
-                                value=(2022, 2024))
+                                value=(2009, 2024))
     anos_selecionados = list(range(ano_inicio, ano_fim + 1))
 with colunas[0]:
     medias_gerais = Dados.media_geral_por_cidade_ano(
