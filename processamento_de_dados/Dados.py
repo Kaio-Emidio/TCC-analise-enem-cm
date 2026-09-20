@@ -1,10 +1,11 @@
 import pandas as pd
 import streamlit as st
 from processamento_de_dados.Filtrar import Filtrar
+from config import Config
 
 class Dados:
     def ler_ano(ano):
-        caminho_arquivo = f"microdados_filtrados/microdados_enem_{ano}.parquet"
+        caminho_arquivo = f"{Config.PASTA_SAIDA}/microdados_enem_{ano}.parquet"
         df = pd.read_parquet(caminho_arquivo)
         return df
 
