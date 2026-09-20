@@ -24,9 +24,18 @@ for ano in range(2009, 2025):
 
 with st.sidebar:
     ano_selecionado = st.selectbox(
-        label='Selecione o ano de interesse',
+        label='Selecione o ano de foco',
         options=anos
     )
+
+    ano_inicio, ano_fim = st.slider(label='Selecione o intervalo de anos desejados',
+                                min_value=2009,
+                                max_value=2024,
+                                value=(2022, 2024))
+
+    cidades_selecionadas = st.multiselect(label='Selecione os municípios que deseja visualizar',
+                options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
+                default=['Ceará-Mirim', 'Natal'])
 
 dados_ano_selec = Dados.ler_ano(ano_selecionado)
 estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
@@ -50,29 +59,18 @@ st.header('Gráficos')
 
 st.subheader('Exibição temporal')
 
-colunas = st.columns(2)
+anos_selecionados = list(range(ano_inicio, ano_fim + 1))
 
-with colunas[1]:
-    cidades_selecionadas = st.multiselect(label='Selecione os municípios que deseja visualizar',
-                options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
-                default=['Ceará-Mirim', 'Natal'])
-
-    ano_inicio, ano_fim = st.slider(label='Selecione o ano de interesse',
-                                min_value=2009,
-                                max_value=2024,
-                                value=(2009, 2024))
-    anos_selecionados = list(range(ano_inicio, ano_fim + 1))
-with colunas[0]:
-    medias_gerais = Dados.media_geral_por_cidade_ano(
-        cidades=cidades_selecionadas,
-        anos=anos_selecionados
-    )
-    figura_linha = CriarGrafico.linha(
-        df=medias_gerais,
-        cidades=cidades_selecionadas,
-        anos=anos_selecionados
-    )
-    st.plotly_chart(figura_linha, use_container_width=True)
+medias_gerais = Dados.media_geral_por_cidade_ano(
+    cidades=cidades_selecionadas,
+    anos=anos_selecionados
+)
+grafico_linha = CriarGrafico.linha(
+    df=medias_gerais,
+    cidades=cidades_selecionadas,
+    anos=anos_selecionados
+)
+st.plotly_chart(grafico_linha, use_container_width=True)
 
 st.multiselect(label='Selecione as áreas que deseja visualizar',
                options=['Linguagens e Códigos', 'Ciências Humanas', 'Matemática', 'Ciências da Natureza', 'Redação'])
