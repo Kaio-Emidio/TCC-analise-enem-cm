@@ -72,5 +72,11 @@ grafico_linha = CriarGrafico.linha(
 )
 st.plotly_chart(grafico_linha, use_container_width=True)
 
+grafic_radar = CriarGrafico.radar(
+    df=dados_ano_selec,
+    cidades=cidades_selecionadas,
+    ano=ano_selecionado
+)
+
 st.multiselect(label='Selecione as áreas que deseja visualizar',
                options=['Linguagens e Códigos', 'Ciências Humanas', 'Matemática', 'Ciências da Natureza', 'Redação'])
