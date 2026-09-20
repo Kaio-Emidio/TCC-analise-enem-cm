@@ -1,7 +1,14 @@
 from pathlib import Path
+import os
 
 class Config:
-    PASTA_PROJETO = Path(__file__).resolve().parent
+    COLLAB = True if "COLAB_GPU" in os.environ else False
+
+    if COLLAB:
+        PASTA_PROJETO = Path("/content/TCC-analise-enem-cm")
+    else:
+        PASTA_PROJETO = Path(__file__).resolve().parent
+    
     PASTA_ENTRADA = PASTA_PROJETO / "microdados_brutos"
     PASTA_SAIDA = PASTA_PROJETO / "microdados_filtrados"
 
