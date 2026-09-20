@@ -21,8 +21,8 @@ class Dados:
 
         resultado = {}
 
-        progress_bar = st.sidebar.progress(0)
-        status_text = st.sidebar.empty()
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
         for coluna in colunas_enem:
             status_text.text(f"Analisando notas de {coluna}...")

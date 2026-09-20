@@ -5,13 +5,17 @@ from processamento_de_dados.Dados import Dados
 from processamento_de_dados.Filtrar import Filtrar
 from processamento_de_dados.CriarGrafico import CriarGrafico
 
-# Filtrar.filtrar_colunas()
+Filtrar.filtrar_colunas()
 
 st.set_page_config(
     page_title='Análise Temporal Notas do ENEM',
     layout='wide')
 
 st.title('Análise Temporal Notas do ENEM')
+
+progress_bar = st.empty()
+status_text = st.empty()
+
 st.subheader('Média das notas em cada disciplina por ano')
 
 anos = []
