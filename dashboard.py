@@ -14,10 +14,14 @@ st.set_page_config(
 st.title('Análise Temporal Notas do ENEM')
 st.subheader('Média das notas em cada disciplina por ano')
 
+anos = []
+for ano in range(2009, 2025):
+    anos.append(ano)
+
 with st.sidebar:
     ano_selecionado = st.selectbox(
-        "Selecione um ano:",
-        ['2022','2023','2024']
+        label='Selecione o ano de interesse',
+        options=anos
     )
 
 dados_ano_selec = Dados.ler_ano(ano_selecionado)
