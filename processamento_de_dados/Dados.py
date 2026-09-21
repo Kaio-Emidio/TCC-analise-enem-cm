@@ -4,46 +4,48 @@ from processamento_de_dados.Filtrar import Filtrar
 from config import Config
 
 class Dados:
+    @st.cache_data  # Cache do Streamlit para evitar re-leitura de arquivos
     def ler_ano(ano):
         caminho_arquivo = f"{Config.PASTA_SAIDA}/MICRODADOS_ENEM_{ano}.parquet"
         df = pd.read_parquet(caminho_arquivo)
         return df
 
     def estatistica(df):
-        colunas_enem = [
+        disciplinas = [
             'Ciências da Natureza',
             'Ciências Humanas',
             'Linguagens e Códigos',
             'Matemática',
-            'Redação',
-            'Geral'
+            'Redação'
         ]
+        colunas_enem = disciplinas + ['Geral']
 
         resultado = {}
 
-        progress_bar = st.progress(0)
+        progress_bar = st.progress(0.0)
         status_text = st.empty()
-        porcentagem = 0
+        passo_progresso = 1.0 / len(colunas_enem)
+        progresso_atual = 0.0
 
         for coluna in colunas_enem:
             status_text.text(f"Analisando notas de {coluna}...")
             if coluna == 'Geral':
+                media_alunos = df[disciplinas].mean(axis=1)
+                
                 resultado[coluna] = {
-                    'media': float(df[['Ciências da Natureza', 'Ciências Humanas', 'Linguagens e Códigos', 'Matemática', 'Redação']].mean(axis=1).mean().round(2)),
-                    'mediana': float(df[['Ciências da Natureza', 'Ciências Humanas', 'Linguagens e Códigos', 'Matemática', 'Redação']].mean(axis=1).median()),
-                    'desvio_padrao': float(df[['Ciências da Natureza', 'Ciências Humanas', 'Linguagens e Códigos', 'Matemática', 'Redação']].mean(axis=1).std()),
+                    'media': float(media_alunos.mean().round(2)),
+                    'mediana': float(media_alunos.median().round(2)),
+                    'desvio_padrao': float(media_alunos.std().round(2)),
                 }
             elif coluna in df.columns:
                 resultado[coluna] = {
                     'media': float(df[coluna].mean().round(2)),
-                    'mediana': float(df[coluna].median()),
-                    'desvio_padrao': float(df[coluna].std()),
+                    'mediana': float(df[coluna].median().round(2)),
+                    'desvio_padrao': float(df[coluna].std().round(2)),
                 }
-            try:
-                porcentagem += 1/5
-                progress_bar.progress(porcentagem)
-            except:
-                progress_bar.progress(100)
+
+            progresso_atual = min(1.0, progresso_atual + passo_progresso)
+            progress_bar.progress(progresso_atual)
 
         status_text.empty()
         progress_bar.empty()
@@ -63,6 +65,10 @@ class Dados:
         for ano in anos:
             df = Dados.ler_ano(ano)
             df = Filtrar.filtrar_cidade(cidades, df).copy()
+
+            if df.empty:
+                continue
+
             df['Município'] = df['Município da Prova'].map(
                 Filtrar.codigo_para_municipio()
             )
