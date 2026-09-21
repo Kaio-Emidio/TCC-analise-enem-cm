@@ -83,3 +83,12 @@ grafico_radar = CriarGrafico.radar(
     ano=ano_de_foco
 )
 st.plotly_chart(grafico_radar, width='stretch')
+
+st.subheader('Distribuição das Notas')
+
+grafico_violino = CriarGrafico.violino(
+    cidades=cidades_selecionadas,
+    ano=ano_de_foco,
+    disciplina=disciplina_selecionada
+)
+st.plotly_chart(grafico_violino, width='stretch')
