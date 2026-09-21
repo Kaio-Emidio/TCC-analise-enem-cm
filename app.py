@@ -23,20 +23,21 @@ for ano in range(2009, 2025):
 with st.sidebar:
     ano_de_foco = st.selectbox(
         label='Selecione o ano de foco',
-        options=anos
+        options=anos,
+        default=2024
     )
 
     ano_inicio, ano_fim = st.slider(
         label='Selecione o intervalo de anos desejados',
         min_value=2009,
         max_value=2024,
-        value=(2022, 2024)
+        value=(2009, 2024)
     )
 
     cidades_selecionadas = st.multiselect(
         label='Selecione os municípios que deseja visualizar',
         options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
-        default=['Ceará-Mirim', 'Natal']
+        default=[]
     )
 
     disciplina_selecionada = st.selectbox(
