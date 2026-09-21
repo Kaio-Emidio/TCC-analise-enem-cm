@@ -35,13 +35,33 @@ class Filtrar:
             print(f"  Colunas do arquivo final: {colunas_finais}\n")
 
     def filtrar_cidade(cidades: list, df: pd.DataFrame):
-        codigos_municipios = [Config.CODIGOS_MUNICIPIOS[cidade] for cidade in cidades]
+        if df.empty or not cidades:
+            return df.copy()
+
+        codigos_municipios = []
+        for c in cidades:
+            # Se for nome de cidade, pega do dicionário. Se já for o código ou não achar, mantém o valor original.
+            codigo = Config.CODIGOS_MUNICIPIOS.get(c, c)
+            codigos_municipios.append(codigo)
+            
+            # Adiciona também a versão em string/int para evitar inconsistência de tipos
+            try:
+                codigos_municipios.append(int(codigo))
+            except (ValueError, TypeError):
+                pass
+
+        # Garante tipo compatível na coluna antes da busca
         df_filtrado = df[df['Município da Prova'].isin(codigos_municipios)].copy()
-        df_filtrado = df_filtrado.dropna()
+        
         return df_filtrado
 
     def codigo_para_municipio():
-        return {
-            codigo: cidade
-            for cidade, codigo in Config.CODIGOS_MUNICIPIOS.items()
-        }
+        dict_codigos = {}
+        for cidade, codigo in Config.CODIGOS_MUNICIPIOS.items():
+            # Mapeia tanto a chave de número inteiro quanto texto (ex: 240260 e '240260')
+            dict_codigos[codigo] = cidade
+            try:
+                dict_codigos[int(codigo)] = cidade
+            except (ValueError, TypeError):
+                pass
+        return dict_codigos
