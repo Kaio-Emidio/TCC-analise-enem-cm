@@ -60,7 +60,7 @@ class CriarGrafico:
             theta='Matéria',
             color='Município',
             line_close=True,
-            title=f'Comparativo das áreas de conhecimento - {ano}',
+            title=f'Comparativo das áreas de conhecimento em {ano}',
             labels={
                 'Nota': 'Nota média',
                 'Matéria': 'Área de conhecimento',
@@ -93,3 +93,58 @@ class CriarGrafico:
         )
 
         return figura
+
+    def violino(cidades: list, disciplina: str, ano: int):
+        # 1. Carrega os dados do ano especificado
+        df = Dados.ler_ano(ano)
+        
+        # 2. Filtra pelas cidades selecionadas
+        df = Filtrar.filtrar_cidade(cidades, df).copy()
+        
+        # 3. Mapeia os códigos de município para seus nomes
+        df['Município'] = df['Município da Prova'].map(
+            Filtrar.codigo_para_municipio()
+        )
+
+        # 4. Garante que a coluna da disciplina seja numérica e remove valores nulos
+        df[disciplina] = pd.to_numeric(df[disciplina], errors='coerce')
+        df_filtrado = df.dropna(subset=['Município', disciplina]).copy()
+
+        # Se não houver dados após os filtros, lança/retorna um gráfico limpo
+        if df_filtrado.empty:
+            figura = px.violin(title=f"Sem dados para a disciplina '{disciplina}' no ano {ano}")
+            return figura
+
+        # 5. Criação do gráfico violino (Eixo X = Município, Eixo Y = Nota da disciplina)
+        figura = px.violin(
+            df_filtrado,
+            x='Município',
+            y=disciplina,
+            color='Município',
+            box=True,        # Mostra o boxplot interno
+            # points='all',    # Mostra todos os pontos de dados
+            title=f'Distribuição das notas de {disciplina} por município em {ano}',
+            labels={
+                disciplina: 'Nota',
+                'Município': 'Município da Prova'
+            }
+        )
+
+        # 6. Cálculo e aplicação do zoom automático (-50 e +50) baseado no código base
+        min_nota = df_filtrado[disciplina].min()
+        max_nota = df_filtrado[disciplina].max()
+
+        limite_inferior = max(0, min_nota - 10)
+        limite_superior = min(1000, max_nota + 10)
+
+        figura.update_yaxes(range=[limite_inferior, limite_superior])
+
+        # 7. Ajustes de layout e tamanho
+        figura.update_layout(
+            height=500,
+            autosize=True,
+            showlegend=False  # Oculta a legenda pois o eixo X já identifica os municípios
+        )
+
+        return figura
+            
