@@ -26,14 +26,23 @@ with st.sidebar:
         options=anos
     )
 
-    ano_inicio, ano_fim = st.slider(label='Selecione o intervalo de anos desejados',
-                                min_value=2009,
-                                max_value=2024,
-                                value=(2022, 2024))
+    ano_inicio, ano_fim = st.slider(
+        label='Selecione o intervalo de anos desejados',
+        min_value=2009,
+        max_value=2024,
+        value=(2022, 2024)
+    )
 
-    cidades_selecionadas = st.multiselect(label='Selecione os municípios que deseja visualizar',
-                options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
-                default=['Ceará-Mirim', 'Natal'])
+    cidades_selecionadas = st.multiselect(
+        label='Selecione os municípios que deseja visualizar',
+        options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
+        default=['Ceará-Mirim', 'Natal']
+    )
+
+    disciplina_selecionada = st.selectbox(
+        label='Selecione a disciplina que deseja visualizar',
+        options=['Ciências da Natureza', 'Ciências Humanas', 'Linguagens e Códigos', 'Matemática', 'Redação']
+    )
 
 st.subheader(f'Média das notas em cada disciplina em {ano_de_foco}')
 dados_ano_selec = Dados.ler_ano(ano_de_foco)
