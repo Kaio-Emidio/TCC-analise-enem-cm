@@ -16,8 +16,6 @@ st.title('Análise Temporal Notas do ENEM')
 progress_bar = st.empty()
 status_text = st.empty()
 
-st.subheader('Média das notas em cada disciplina por ano')
-
 anos = []
 for ano in range(2009, 2025):
     anos.append(ano)
@@ -38,6 +36,7 @@ with st.sidebar:
                 default=['Ceará-Mirim', 'Natal'])
 
 dados_ano_selec = Dados.ler_ano(ano_selecionado)
+st.subheader(f'Média das notas em cada disciplina em {ano_de_foco}')
 estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
 
 colunas = st.columns(5)
@@ -71,6 +70,8 @@ grafico_linha = CriarGrafico.linha(
     anos=anos_selecionados
 )
 st.plotly_chart(grafico_linha, use_container_width=True)
+
+st.subheader('Exibição Focalizada')
 
 grafic_radar = CriarGrafico.radar(
     df=dados_ano_selec,
