@@ -21,7 +21,7 @@ for ano in range(2009, 2025):
     anos.append(ano)
 
 with st.sidebar:
-    ano_selecionado = st.selectbox(
+    ano_de_foco = st.selectbox(
         label='Selecione o ano de foco',
         options=anos
     )
@@ -35,8 +35,8 @@ with st.sidebar:
                 options=['Ceará-Mirim', 'Natal', 'Parnamirim', 'Extremoz', 'São Gonçalo do Amarante', 'Macaíba'],
                 default=['Ceará-Mirim', 'Natal'])
 
-dados_ano_selec = Dados.ler_ano(ano_selecionado)
 st.subheader(f'Média das notas em cada disciplina em {ano_de_foco}')
+dados_ano_selec = Dados.ler_ano(ano_de_foco)
 estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
 
 colunas = st.columns(5)
@@ -76,7 +76,7 @@ st.subheader('Exibição Focalizada')
 grafic_radar = CriarGrafico.radar(
     df=dados_ano_selec,
     cidades=cidades_selecionadas,
-    ano=ano_selecionado
+    ano=ano_de_foco
 )
 
 st.multiselect(label='Selecione as áreas que deseja visualizar',
