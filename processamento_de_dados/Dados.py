@@ -23,6 +23,7 @@ class Dados:
 
         progress_bar = st.progress(0)
         status_text = st.empty()
+        porcentagem = 0
 
         for coluna in colunas_enem:
             status_text.text(f"Analisando notas de {coluna}...")
@@ -37,8 +38,12 @@ class Dados:
                     'media': float(df[coluna].mean().round(2)),
                     'mediana': float(df[coluna].median()),
                     'desvio_padrao': float(df[coluna].std()),
-                }            
-            progress_bar.progress((colunas_enem.index(coluna) + 1) / len(colunas_enem))
+                }
+            try:
+                porcentagem += 1/5
+                progress_bar.progress(porcentagem)
+            except:
+                progress_bar.progress(100)
 
         status_text.empty()
         progress_bar.empty()
