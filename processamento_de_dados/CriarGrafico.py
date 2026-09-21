@@ -38,13 +38,6 @@ class CriarGrafico:
         df['Município'] = df['Município da Prova'].map(
             Filtrar.codigo_para_municipio()
         )
-        df['Média Geral'] = df[
-            ['Ciências da Natureza', 
-            'Ciências Humanas', 
-            'Linguagens e Códigos', 
-            'Matemática', 
-            'Redação']
-            ].mean(axis=1)
 
         medias_por_materia = (
             df.groupby('Município', as_index=False)[
