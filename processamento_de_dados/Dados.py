@@ -34,14 +34,14 @@ class Dados:
                 
                 resultado[coluna] = {
                     'media': float(media_alunos.mean().round(2)),
-                    'mediana': float(media_alunos.median().round(2)),
-                    'desvio_padrao': float(media_alunos.std().round(2)),
+                    'mediana': float(media_alunos.median()),
+                    'desvio_padrao': float(media_alunos.std()),
                 }
             elif coluna in df.columns:
                 resultado[coluna] = {
                     'media': float(df[coluna].mean().round(2)),
-                    'mediana': float(df[coluna].median().round(2)),
-                    'desvio_padrao': float(df[coluna].std().round(2)),
+                    'mediana': float(df[coluna].median()),
+                    'desvio_padrao': float(df[coluna].std()),
                 }
 
             progresso_atual = min(1.0, progresso_atual + passo_progresso)
