@@ -47,11 +47,16 @@ class CriarGrafico:
             .melt(id_vars='Município', var_name='Matéria', value_name='Nota')
         )
 
+        if medias_por_materia.empty:
+                    figura = px.line_polar(title=f"Sem dados para o ano {ano}")
+                    return figura
+
         figura = px.line_polar(
             medias_por_materia,
             r='Nota',
             theta='Matéria',
             color='Município',
+            markers=True,
             line_close=True,
             title=f'Comparativo das áreas de conhecimento em {ano}',
             labels={
