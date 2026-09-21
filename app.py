@@ -78,8 +78,8 @@ st.plotly_chart(grafico_linha, width='stretch')
 
 st.subheader('Exibição Focalizada')
 
-grafic_radar = CriarGrafico.radar(
+grafico_radar = CriarGrafico.radar(
     cidades=cidades_selecionadas,
     ano=ano_de_foco
 )
-st.plotly_chart(grafic_radar, width='stretch')
+st.plotly_chart(grafico_radar, width='stretch')
