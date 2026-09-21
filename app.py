@@ -65,7 +65,6 @@ medias_gerais = Dados.media_geral_por_cidade_ano(
     anos=anos_selecionados
 )
 grafico_linha = CriarGrafico.linha(
-    df=medias_gerais,
     cidades=cidades_selecionadas,
     anos=anos_selecionados
 )
@@ -74,7 +73,6 @@ st.plotly_chart(grafico_linha, use_container_width=True)
 st.subheader('Exibição Focalizada')
 
 grafic_radar = CriarGrafico.radar(
-    df=dados_ano_selec,
     cidades=cidades_selecionadas,
     ano=ano_de_foco
 )

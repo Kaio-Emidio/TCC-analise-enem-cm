@@ -1,19 +1,20 @@
+from processamento_de_dados.Dados import Dados
+from processamento_de_dados.Filtrar import Filtrar
 import plotly.express as px
 import pandas as pd
-from processamento_de_dados.Filtrar import Filtrar
 
 class CriarGrafico:
-    def linha(df: pd.DataFrame, cidades: list, anos: list):
+    def linha(cidades: list, anos: list):
         # o eixo x será os anos selecionados
         # o eixo y será a nota
         # cada cidade terá uma linha individual
-        df_filtrado = df[
-            df['Ano'].astype(str).isin(map(str, anos))
-            & df['Município'].isin(cidades)
-        ].copy()
+        medias_gerais = Dados.media_geral_por_cidade_ano(
+            cidades=cidades,
+            anos=anos
+        )
 
         figura = px.line(
-            df_filtrado,
+            medias_gerais,
             x='Ano',
             y='Média Geral',
             color='Município',
