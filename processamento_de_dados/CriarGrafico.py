@@ -32,51 +32,64 @@ class CriarGrafico:
 
         return figura
         
-    def radar(df: pd.DataFrame, cidades: list, ano: int):
-        df_filtrado = df.copy()
+    def radar(cidades: list, ano: int):
+        df = Dados.ler_ano(ano)
+        df = Filtrar.filtrar_cidade(cidades, df).copy()
+        df['Município'] = df['Município da Prova'].map(
+            Filtrar.codigo_para_municipio()
+        )
+        df['Média Geral'] = df[
+            ['Ciências da Natureza', 
+            'Ciências Humanas', 
+            'Linguagens e Códigos', 
+            'Matemática', 
+            'Redação']
+            ].mean(axis=1)
 
-        if 'Ano' in df_filtrado.columns:
-            df_filtrado = df_filtrado[df_filtrado['Ano'].astype(str) == str(ano)]
-
-        if 'Município da Prova' in df_filtrado.columns:
-            df_filtrado = Filtrar.filtrar_cidade(cidades, df_filtrado)
-            df_filtrado['Município'] = df_filtrado['Município da Prova'].map(
-                Filtrar.codigo_para_municipio()
-            )
-        else:
-            df_filtrado = df_filtrado[df_filtrado['Município'].isin(cidades)]
-
-        if 'Área do Conhecimento' not in df_filtrado.columns:
-            colunas_notas = [
-                'Linguagens e Códigos',
-                'Ciências Humanas',
-                'Matemática',
-                'Ciências da Natureza',
-                'Redação',
+        medias_por_materia = (
+            df.groupby('Município', as_index=False)[
+                ['Ciências da Natureza', 'Ciências Humanas', 'Linguagens e Códigos', 'Matemática', 'Redação']
             ]
-            df_filtrado = df_filtrado.melt(
-                id_vars=['Município'],
-                value_vars=colunas_notas,
-                var_name='Área do Conhecimento',
-                value_name='Média Geral',
-            ).groupby(
-                ['Município', 'Área do Conhecimento'], as_index=False
-            )['Média Geral'].mean()
+            .mean()
+            .melt(id_vars='Município', var_name='Matéria', value_name='Nota')
+        )
 
         figura = px.line_polar(
-            df_filtrado,
-            r='Média Geral',
-            theta='Área do Conhecimento',
+            medias_por_materia,
+            r='Nota',
+            theta='Matéria',
             color='Município',
             line_close=True,
-            markers=True,
+            title=f'Comparativo das áreas de conhecimento - {ano}',
             labels={
-                'Média Geral': 'Nota média',
-                'Área do Conhecimento': 'Área do Conhecimento',
+                'Nota': 'Nota média',
+                'Matéria': 'Área de conhecimento',
                 'Município': 'Município',
-            },
-            title=f'Média das notas por área do conhecimento - {ano}',
+            }
         )
-        figura.update_layout(legend_title_text='Município')
+
+        menor_nota = medias_por_materia['Nota'].min()
+        maior_nota = medias_por_materia['Nota'].max()
+
+        limite_inferior = max(0, menor_nota - 10)
+        limite_superior = min(1000, maior_nota + 10)
+
+        # Configuração do zoom e da cor dos números da escala
+        figura.update_polars(
+            radialaxis=dict(
+                visible=True,
+                range=[limite_inferior, limite_superior],
+                tickfont=dict(
+                    color='black',
+                    size=12
+                ),
+                tickangle=45,
+            )
+        )
+
+        figura.update_layout(
+            height=500,
+            autosize=True
+        )
 
         return figura
