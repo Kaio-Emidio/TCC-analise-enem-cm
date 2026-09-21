@@ -60,15 +60,12 @@ st.subheader('Exibição temporal')
 
 anos_selecionados = list(range(ano_inicio, ano_fim + 1))
 
-medias_gerais = Dados.media_geral_por_cidade_ano(
-    cidades=cidades_selecionadas,
-    anos=anos_selecionados
-)
+
 grafico_linha = CriarGrafico.linha(
     cidades=cidades_selecionadas,
     anos=anos_selecionados
 )
-st.plotly_chart(grafico_linha, use_container_width=True)
+st.plotly_chart(grafico_linha, width='stretch')
 
 st.subheader('Exibição Focalizada')
 
@@ -76,6 +73,4 @@ grafic_radar = CriarGrafico.radar(
     cidades=cidades_selecionadas,
     ano=ano_de_foco
 )
-
-st.multiselect(label='Selecione as áreas que deseja visualizar',
-               options=['Linguagens e Códigos', 'Ciências Humanas', 'Matemática', 'Ciências da Natureza', 'Redação'])
+st.plotly_chart(grafic_radar, width='stretch')
