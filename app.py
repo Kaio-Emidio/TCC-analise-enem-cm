@@ -24,7 +24,7 @@ with st.sidebar:
     ano_de_foco = st.selectbox(
         label='Selecione o ano de foco',
         options=anos,
-        default=2024
+        index=anos.index(2022)
     )
 
     ano_inicio, ano_fim = st.slider(
