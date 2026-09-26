@@ -4,10 +4,10 @@ from processamento_de_dados.Filtrar import Filtrar
 from config import Config
 
 class Dados:
-    @st.cache_data  # Cache do Streamlit para evitar re-leitura de arquivos
-    def ler_ano(ano):
+    @st.cache_data
+    def ler_ano(ano, columns=None):
         caminho_arquivo = f"{Config.PASTA_SAIDA}/MICRODADOS_ENEM_{ano}.parquet"
-        df = pd.read_parquet(caminho_arquivo)
+        df = pd.read_parquet(caminho_arquivo, columns=columns)
         return df
 
     def estatistica(df):
@@ -51,20 +51,29 @@ class Dados:
         progress_bar.empty()
 
         return resultado
-    
-    def media_geral_por_cidade_ano(cidades: list, anos: list):
-        colunas_notas = [
+
+    def media_materias_por_cidade_ano(cidades: list, anos: list) -> pd.DataFrame:
+        colunas_objetivas = [
             'Ciências da Natureza',
             'Ciências Humanas',
             'Linguagens e Códigos',
             'Matemática',
-            'Redação',
         ]
+        colunas_notas = colunas_objetivas + ['Redação']
+        colunas_necessarias = colunas_notas + ['Município da Prova']
+        
         resultados = []
 
         for ano in anos:
-            df = Dados.ler_ano(ano)
-            df = Filtrar.filtrar_cidade(cidades, df).copy()
+            df = Dados.ler_ano(ano, columns=colunas_necessarias)
+            
+            df = Filtrar.filtrar_cidade(cidades, df)
+
+            if df.empty:
+                continue
+
+            faltas = df[colunas_objetivas].isna().sum(axis=1)
+            df = df[faltas < 2]
 
             if df.empty:
                 continue
@@ -72,18 +81,24 @@ class Dados:
             df['Município'] = df['Município da Prova'].map(
                 Filtrar.codigo_para_municipio()
             )
-            df['Média Geral'] = df[colunas_notas].mean(axis=1)
 
-            resultado_ano = (
-                df.groupby('Município', as_index=False)['Média Geral']
-                .mean()
-                .assign(Ano=str(ano))
-            )
-            resultados.append(resultado_ano)
+            # 1. Agrupa e calcula as médias por município para cada matéria
+            medias_por_muni = df.groupby('Município', as_index=False)[colunas_notas].mean()
+            
+            # 2. Calcula a média geral por município
+            medias_por_muni['Geral'] = medias_por_muni[colunas_notas].mean(axis=1)
+            medias_por_muni['Ano'] = str(ano)
+
+            resultados.append(medias_por_muni)
 
         if not resultados:
-            return pd.DataFrame(columns=['Ano', 'Município', 'Média Geral'])
+            colunas_finais = ['Ano', 'Município', 'Geral'] + colunas_notas
+            return pd.DataFrame(columns=colunas_finais)
 
-        return pd.concat(resultados, ignore_index=True)[
-            ['Ano', 'Município', 'Média Geral']
-        ]
+        df_final = pd.concat(resultados, ignore_index=True)
+        
+        # Arredonda valores para 2 casas decimais
+        cols_num = ['Geral'] + colunas_notas
+        df_final[cols_num] = df_final[cols_num].round(2)
+
+        return df_final

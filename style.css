@@ -1,0 +1,26 @@
+/* style.css */
+
+/* Container da Métrica */
+div[data-testid="stMetric"] {
+    background-color: #0e1117;
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Estado Hover (Mouse por cima) */
+div[data-testid="stMetric"]:hover {
+    background-color: #f1f5f9; /* Altere para a cor desejada */
+    border-color: #cbd5e1;
+    cursor: pointer;
+}
+
+/* Altera a cor do valor numérico no hover */
+div[data-testid="stMetric"]:hover [data-testid="stMetricValue"] {
+    color: #2563eb;
+}
+
+/* Altera a cor do rótulo/label no hover */
+div[data-testid="stMetric"]:hover [data-testid="stMetricLabel"] {
+    color: #1e293b;
+}

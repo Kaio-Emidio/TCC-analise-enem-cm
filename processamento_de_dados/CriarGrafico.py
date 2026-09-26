@@ -4,31 +4,72 @@ import plotly.express as px
 import pandas as pd
 
 class CriarGrafico:
-    def linha(cidades: list, anos: list):
+    def linha(cidades: list, anos: list, materia: str = 'Geral'):
         # o eixo x será os anos selecionados
         # o eixo y será a nota
         # cada cidade terá uma linha individual
-        medias_gerais = Dados.media_geral_por_cidade_ano(
-            cidades=cidades,
-            anos=anos
+        medias_gerais = Dados.media_materias_por_cidade_ano(
+            cidades=cidades, anos=anos
         )
 
-        figura = px.line(
-            medias_gerais,
-            x='Ano',
-            y='Média Geral',
-            color='Município',
-            line_group='Município',
-            markers=True,
-            labels={
-                'Ano': 'Ano',
-                'Média Geral': 'Nota média',
-                'Município': 'Município',
-            },
-            title='Média das notas por município e ano',
-        )
+        if medias_gerais.empty:
+            return px.line(title='Nenhum dado encontrado')
+
+        # --- CASO 1: Selecionou "Todas as Disciplinas" ---
+        if materia == 'Todas':
+            disciplinas = [
+                'Ciências da Natureza',
+                'Ciências Humanas',
+                'Linguagens e Códigos',
+                'Matemática',
+                'Redação',
+            ]
+
+            # Transforma as colunas das matérias em linhas (formato longo)
+            df_longo = medias_gerais.melt(
+                id_vars=['Ano', 'Município'],
+                value_vars=disciplinas,
+                var_name='Disciplina',
+                value_name='Nota Média',
+            )
+
+            # Se houver mais de uma cidade selecionada, agrupa/distingue o rótulo
+            if len(cidades) > 1:
+                df_longo['Legenda'] = (
+                    df_longo['Município'] + ' - ' + df_longo['Disciplina']
+                )
+                cor = 'Legenda'
+            else:
+                cor = 'Disciplina'
+
+            figura = px.line(
+                df_longo,
+                x='Ano',
+                y='Nota Média',
+                color=cor,
+                markers=True,
+                title='Evolução Temporal - Todas as Disciplinas',
+            )
+
+        # --- CASO 2: Selecionou uma matéria específica ou "Geral" ---
+        else:
+            figura = px.line(
+                medias_gerais,
+                x='Ano',
+                y=materia,
+                color='Município',
+                line_group='Município',
+                markers=True,
+                labels={
+                    'Ano': 'Ano',
+                    materia: f'Nota média ({materia})',
+                    'Município': 'Município',
+                },
+                title=f'Média das notas por município e ano - {materia}',
+            )
+
         figura.update_xaxes(type='category')
-        figura.update_layout(legend_title_text='Município')
+        figura.update_layout(hovermode='x unified')
 
         return figura
         
@@ -95,54 +136,77 @@ class CriarGrafico:
     def violino(cidades: list, disciplina: str, ano: int):
         # 1. Carrega os dados do ano especificado
         df = Dados.ler_ano(ano)
-        
+
         # 2. Filtra pelas cidades selecionadas
         df = Filtrar.filtrar_cidade(cidades, df).copy()
-        
+
         # 3. Mapeia os códigos de município para seus nomes
         df['Município'] = df['Município da Prova'].map(
             Filtrar.codigo_para_municipio()
         )
 
-        # 4. Garante que a coluna da disciplina seja numérica e remove valores nulos
-        df[disciplina] = pd.to_numeric(df[disciplina], errors='coerce')
+        disciplinas_provas = [
+            'Ciências da Natureza',
+            'Ciências Humanas',
+            'Linguagens e Códigos',
+            'Matemática',
+            'Redação'
+        ]
+
+        # --- CASO ESPECIAL: Se for 'Geral', calcula a média geral de cada aluno ---
+        if disciplina == 'Geral':
+            # Garante que todas as colunas sejam numéricas
+            for col in disciplinas_provas:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # Calcula a média do aluno nas 5 matérias (linha a linha)
+            df['Geral'] = df[disciplinas_provas].mean(axis=1)
+        else:
+            # Se for uma matéria individual, converte apenas ela
+            df[disciplina] = pd.to_numeric(df[disciplina], errors='coerce')
+
+        # 4. Remove linhas sem município ou sem nota na métrica escolhida
         df_filtrado = df.dropna(subset=['Município', disciplina]).copy()
 
-        # Se não houver dados após os filtros, lança/retorna um gráfico limpo
+        # Se não houver dados após os filtros, retorna um gráfico limpo
         if df_filtrado.empty:
-            figura = px.violin(title=f"Sem dados para a disciplina '{disciplina}' no ano {ano}")
+            figura = px.violin(
+                title=f"Sem dados para '{disciplina}' no ano {ano}"
+            )
             return figura
 
-        # 5. Criação do gráfico violino (Eixo X = Município, Eixo Y = Nota da disciplina)
+        # 5. Criação do gráfico de violino
         figura = px.violin(
             df_filtrado,
             x='Município',
             y=disciplina,
             color='Município',
-            box=True,        # Mostra o boxplot interno
-            # points='all',    # Mostra todos os pontos de dados
-            title=f'Distribuição das notas de {disciplina} por município em {ano}',
+            box=True,  # Mostra o boxplot interno
+            title=f'Distribuição das notas ({disciplina}) por município em {ano}',
             labels={
                 disciplina: 'Nota',
-                'Município': 'Município da Prova'
-            }
+                'Município': 'Município da Prova',
+            },
         )
 
-        # 6. Cálculo e aplicação do zoom automático (-50 e +50) baseado no código base
+        # 6. Cálculo e aplicação do zoom automático
         min_nota = df_filtrado[disciplina].min()
         max_nota = df_filtrado[disciplina].max()
 
         limite_inferior = max(0, min_nota - 10)
         limite_superior = min(1000, max_nota + 10)
 
-        figura.update_yaxes(range=[limite_inferior, limite_superior])
+        figura.update_yaxes(
+            range=[limite_inferior, limite_superior], showspikes=False
+        )
+        figura.update_xaxes(showspikes=False)
 
-        # 7. Ajustes de layout e tamanho
+        # 7. Ajustes de layout
         figura.update_layout(
             height=500,
             autosize=True,
-            showlegend=False  # Oculta a legenda pois o eixo X já identifica os municípios
+            showlegend=False
         )
 
         return figura
-            
+                
