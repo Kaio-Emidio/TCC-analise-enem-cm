@@ -24,17 +24,16 @@ status_text = st.empty()
 anos = list(range(2009, 2025))
 
 with st.sidebar.form(key='filtros_enem'):
+    ano_inicio, ano_fim = st.slider(
+            label='Selecione o intervalo de anos desejados',
+            min_value=2009,
+            max_value=2024,
+            value=(2009, 2024),
+        )
     ano_de_foco = st.selectbox(
         label='Selecione o ano de foco',
         options=anos,
         index=anos.index(2022) if 2022 in anos else 0,
-    )
-
-    ano_inicio, ano_fim = st.slider(
-        label='Selecione o intervalo de anos desejados',
-        min_value=2009,
-        max_value=2024,
-        value=(2009, 2024),
     )
 
     cidades_selecionadas = st.multiselect(
@@ -54,7 +53,7 @@ with st.sidebar.form(key='filtros_enem'):
     disciplina_selecionada = st.selectbox(
         label='Selecione a disciplina que deseja visualizar',
         options=[
-            'Geral',  # <--- Adicionado 'Geral' nas opções
+            'Geral', 
             'Ciências da Natureza',
             'Ciências Humanas',
             'Linguagens e Códigos',
@@ -65,7 +64,43 @@ with st.sidebar.form(key='filtros_enem'):
     )
     st.form_submit_button(label='Aplicar Filtros', type='primary')
 
-st.subheader(f'Média das notas em cada disciplina em {ano_de_foco}')
+@st.dialog("Dashboard ENEM", width="large")
+def abrir_tutorial():
+    st.markdown("""
+    Esse dashboard foi desenvolvido para analisar o desempenho dos alunos de alguns dos municípios que fazem parte da Grande Natal no ENEM ao longo do tempo, 
+    permitindo comparações entre diferentes municípios e disciplinas. 
+    Esse projeto é desenvolvido por alunos do curso tecnico em informática do IFRN como projeto de conclusão de curso.
+    """)
+    
+    st.markdown("---")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 1. Sidebar (Filtros)")
+        st.markdown("""
+        * **Ano de Foco:** Define o ano analisado nos gráficos de **Radar**, **Violino** e nas **Métricas**;
+        * **Intervalo de Anos:** Define o período temporal do gráfico de Linha;
+        * **Municípios:** Escolher as cidades para comparar;
+        * **Disciplina:** Alterne entre disciplinas específicas ou a média **Geral**.
+        * *Lembre-se de clicar em **Aplicar Filtros** para atualizar!*
+        """)
+        
+    with col2:
+        st.markdown("### 2. Gráficos Interativos")
+        st.markdown("""
+        * **Gráfico de Linha:** Acompanhe o crescimento ou queda das médias ao longo do tempo.
+        * **Radar:** Compare o desempenho relativo em cada área de conhecimento.
+        * **Violino:** Analise a dispersão e concentração das notas dos alunos.
+        """)
+
+    if st.button("Fechar", type="primary"):
+        st.rerun()
+
+with st.sidebar:
+    if st.button("Tutorial", use_container_width=True):
+        abrir_tutorial()
+
 dados_ano_selec = Dados.ler_ano(ano_de_foco)
 estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
 
