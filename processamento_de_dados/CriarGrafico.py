@@ -73,19 +73,11 @@ class CriarGrafico:
 
         return figura
         
-    def radar(cidades: list, ano: int):
-        df = Dados.ler_ano(ano)
-        df = Filtrar.filtrar_cidade(cidades, df).copy()
-        df['Município'] = df['Município da Prova'].map(
-            Filtrar.codigo_para_municipio()
-        )
-
-        medias_por_materia = (
-            df.groupby('Município', as_index=False)[
-                ['Ciências da Natureza', 'Ciências Humanas', 'Linguagens e Códigos', 'Matemática', 'Redação']
-            ]
-            .mean()
-            .melt(id_vars='Município', var_name='Matéria', value_name='Nota')
+    def radar(medias_por_municipio: pd.DataFrame, ano: int):
+        medias_por_materia = medias_por_municipio.melt(
+            id_vars='Município',
+            var_name='Matéria',
+            value_name='Nota',
         )
 
         if medias_por_materia.empty:
@@ -134,17 +126,6 @@ class CriarGrafico:
         return figura
 
     def violino(cidades: list, disciplina: str, ano: int):
-        # 1. Carrega os dados do ano especificado
-        df = Dados.ler_ano(ano)
-
-        # 2. Filtra pelas cidades selecionadas
-        df = Filtrar.filtrar_cidade(cidades, df).copy()
-
-        # 3. Mapeia os códigos de município para seus nomes
-        df['Município'] = df['Município da Prova'].map(
-            Filtrar.codigo_para_municipio()
-        )
-
         disciplinas_provas = [
             'Ciências da Natureza',
             'Ciências Humanas',
@@ -152,6 +133,21 @@ class CriarGrafico:
             'Matemática',
             'Redação'
         ]
+        colunas_necessarias = disciplinas_provas + ['Município da Prova']
+
+        # 1. Carrega somente as colunas necessárias para o gráfico
+        df = Dados.ler_ano(ano, columns=colunas_necessarias)
+
+        # 2. Filtra pelas cidades selecionadas
+        df = Dados.filtrar_alunos_por_notas_objetivas(
+            Filtrar.filtrar_cidade(cidades, df)
+        )
+        df = Dados.tratar_zeros_redacao_como_ausentes(df)
+
+        # 3. Mapeia os códigos de município para seus nomes
+        df['Município'] = df['Município da Prova'].map(
+            Filtrar.codigo_para_municipio()
+        )
 
         # --- CASO ESPECIAL: Se for 'Geral', calcula a média geral de cada aluno ---
         if disciplina == 'Geral':
@@ -167,6 +163,7 @@ class CriarGrafico:
 
         # 4. Remove linhas sem município ou sem nota na métrica escolhida
         df_filtrado = df.dropna(subset=['Município', disciplina]).copy()
+        df_filtrado = df_filtrado[df_filtrado[disciplina].ne(0)]
 
         # Se não houver dados após os filtros, retorna um gráfico limpo
         if df_filtrado.empty:

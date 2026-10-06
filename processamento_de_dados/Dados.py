@@ -4,13 +4,31 @@ from processamento_de_dados.Filtrar import Filtrar
 from config import Config
 
 class Dados:
-    @st.cache_data
+    def filtrar_alunos_por_notas_objetivas(df: pd.DataFrame) -> pd.DataFrame:
+        colunas_objetivas = [
+            'Ciências da Natureza',
+            'Ciências Humanas',
+            'Linguagens e Códigos',
+            'Matemática',
+        ]
+        zeros_por_aluno = df[colunas_objetivas].eq(0).sum(axis=1)
+        return df.loc[zeros_por_aluno < 2].copy()
+
+    def tratar_zeros_redacao_como_ausentes(df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        if 'Redação' in df.columns:
+            df['Redação'] = df['Redação'].mask(df['Redação'].eq(0))
+        return df
+
+    @st.cache_resource(max_entries=2)
     def ler_ano(ano, columns=None):
         caminho_arquivo = f"{Config.PASTA_SAIDA}/MICRODADOS_ENEM_{ano}.parquet"
         df = pd.read_parquet(caminho_arquivo, columns=columns)
         return df
 
     def estatistica(df):
+        df = Dados.filtrar_alunos_por_notas_objetivas(df)
+        df = Dados.tratar_zeros_redacao_como_ausentes(df)
         disciplinas = [
             'Ciências da Natureza',
             'Ciências Humanas',
@@ -52,6 +70,25 @@ class Dados:
 
         return resultado
 
+    def medias_por_municipio(cidades: list, ano: int) -> pd.DataFrame:
+        colunas_notas = [
+            'Ciências da Natureza',
+            'Ciências Humanas',
+            'Linguagens e Códigos',
+            'Matemática',
+            'Redação',
+        ]
+        colunas_necessarias = colunas_notas + ['Município da Prova']
+        df = Dados.ler_ano(ano, columns=colunas_necessarias)
+        df = Filtrar.filtrar_cidade(cidades, df)
+        df = Dados.filtrar_alunos_por_notas_objetivas(df)
+        df = Dados.tratar_zeros_redacao_como_ausentes(df)
+        df['Município'] = df['Município da Prova'].map(
+            Filtrar.codigo_para_municipio()
+        )
+
+        return df.groupby('Município', as_index=False)[colunas_notas].mean()
+
     def media_materias_por_cidade_ano(cidades: list, anos: list) -> pd.DataFrame:
         colunas_objetivas = [
             'Ciências da Natureza',
@@ -71,6 +108,13 @@ class Dados:
 
             if df.empty:
                 continue
+
+            df = Dados.filtrar_alunos_por_notas_objetivas(df)
+
+            if df.empty:
+                continue
+
+            df = Dados.tratar_zeros_redacao_como_ausentes(df)
 
             faltas = df[colunas_objetivas].isna().sum(axis=1)
             df = df[faltas < 2]
