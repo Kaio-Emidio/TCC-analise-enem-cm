@@ -90,8 +90,8 @@ def abrir_tutorial():
         st.markdown("### 2. Gráficos Interativos")
         st.markdown("""
         * **Gráfico de Linha:** Acompanhe o crescimento ou queda das médias ao longo do tempo.
-        * **Radar:** Compare o desempenho relativo em cada área de conhecimento.
-        * **Violino:** Analise a dispersão e concentração das notas dos alunos.
+        * **Radar:** Compare o desempenho relativo em cada área de conhecimento em um ano específico.
+        * **Violino:** Analise a dispersão e concentração das notas dos alunos em um ano específico.
         """)
 
     if st.button("Fechar", type="primary"):
@@ -101,7 +101,14 @@ with st.sidebar:
     if st.button("Tutorial", use_container_width=True):
         abrir_tutorial()
 
-dados_ano_selec = Dados.ler_ano(ano_de_foco)
+disciplinas_provas = [
+    'Ciências da Natureza',
+    'Ciências Humanas',
+    'Linguagens e Códigos',
+    'Matemática',
+    'Redação',
+]
+dados_ano_selec = Dados.ler_ano(ano_de_foco, columns=disciplinas_provas)
 estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
 
 st.header('Gráficos')
@@ -117,6 +124,11 @@ grafico_linha = CriarGrafico.linha(
 st.plotly_chart(grafico_linha, use_container_width=True)
 
 st.subheader('Exibição Focalizada')
+
+medias_municipais = Dados.medias_por_municipio(
+    cidades=cidades_selecionadas,
+    ano=ano_de_foco,
+)
 
 col_metricas, col_radar = st.columns([1, 3])
 
@@ -144,7 +156,8 @@ with col_metricas:
 
 with col_radar:
     grafico_radar = CriarGrafico.radar(
-        cidades=cidades_selecionadas, ano=ano_de_foco
+        medias_por_municipio=medias_municipais,
+        ano=ano_de_foco,
     )
     
     grafico_radar.update_layout(
