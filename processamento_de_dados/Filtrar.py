@@ -2,8 +2,25 @@ import pandas as pd
 from config import Config
 
 class Filtrar:
-    def filtrar_colunas():
-        arquivos = list(Config.PASTA_ENTRADA.glob("*.csv"))
+    @staticmethod
+    def filtrar_colunas(anos: list[int] | None = None):
+        if anos is None:
+            arquivos = sorted(Config.PASTA_ENTRADA.glob("*.csv"))
+        else:
+            arquivos = [
+                Config.PASTA_ENTRADA / f"MICRODADOS_ENEM_{ano}.csv"
+                for ano in anos
+            ]
+            arquivos_nao_encontrados = [
+                arquivo for arquivo in arquivos if not arquivo.exists()
+            ]
+            if arquivos_nao_encontrados:
+                nomes_ausentes = ", ".join(
+                    arquivo.name for arquivo in arquivos_nao_encontrados
+                )
+                raise FileNotFoundError(
+                    f"Não foi possível encontrar os arquivos CSV: {nomes_ausentes}"
+                )
 
         if not arquivos:
             print(f"Nenhum arquivo CSV encontrado em: '{Config.PASTA_ENTRADA}'")
@@ -34,6 +51,7 @@ class Filtrar:
             print(f"✓ Concluído: '{caminho_final.name}'")
             print(f"  Colunas do arquivo final: {colunas_finais}\n")
 
+    @staticmethod
     def filtrar_cidade(cidades: list, df: pd.DataFrame):
         if df.empty or not cidades:
             return df.copy()
@@ -55,6 +73,7 @@ class Filtrar:
         
         return df_filtrado
 
+    @staticmethod
     def codigo_para_municipio():
         dict_codigos = {}
         for cidade, codigo in Config.CODIGOS_MUNICIPIOS.items():

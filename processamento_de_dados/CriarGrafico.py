@@ -4,6 +4,7 @@ import plotly.express as px
 import pandas as pd
 
 class CriarGrafico:
+    @staticmethod
     def linha(cidades: list, anos: list, materia: str = 'Geral'):
         # o eixo x será os anos selecionados
         # o eixo y será a nota
@@ -73,6 +74,7 @@ class CriarGrafico:
 
         return figura
         
+    @staticmethod
     def radar(medias_por_municipio: pd.DataFrame, ano: int):
         medias_por_materia = medias_por_municipio.melt(
             id_vars='Município',
@@ -125,6 +127,7 @@ class CriarGrafico:
 
         return figura
 
+    @staticmethod
     def violino(cidades: list, disciplina: str, ano: int):
         disciplinas_provas = [
             'Ciências da Natureza',

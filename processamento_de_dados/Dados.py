@@ -4,6 +4,7 @@ from processamento_de_dados.Filtrar import Filtrar
 from config import Config
 
 class Dados:
+    @staticmethod
     def filtrar_alunos_por_notas_objetivas(df: pd.DataFrame) -> pd.DataFrame:
         colunas_objetivas = [
             'Ciências da Natureza',
@@ -14,18 +15,21 @@ class Dados:
         zeros_por_aluno = df[colunas_objetivas].eq(0).sum(axis=1)
         return df.loc[zeros_por_aluno < 2].copy()
 
+    @staticmethod
     def tratar_zeros_redacao_como_ausentes(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
         if 'Redação' in df.columns:
             df['Redação'] = df['Redação'].mask(df['Redação'].eq(0))
         return df
 
-    @st.cache_resource(max_entries=2)
+    @staticmethod
+    @st.cache_data
     def ler_ano(ano, columns=None):
         caminho_arquivo = f"{Config.PASTA_SAIDA}/MICRODADOS_ENEM_{ano}.parquet"
         df = pd.read_parquet(caminho_arquivo, columns=columns)
         return df
 
+    @staticmethod
     def estatistica(df):
         df = Dados.filtrar_alunos_por_notas_objetivas(df)
         df = Dados.tratar_zeros_redacao_como_ausentes(df)
@@ -70,6 +74,8 @@ class Dados:
 
         return resultado
 
+    @staticmethod
+    @st.cache_data
     def medias_por_municipio(cidades: list, ano: int) -> pd.DataFrame:
         colunas_notas = [
             'Ciências da Natureza',
@@ -89,6 +95,8 @@ class Dados:
 
         return df.groupby('Município', as_index=False)[colunas_notas].mean()
 
+    @staticmethod
+    @st.cache_data
     def media_materias_por_cidade_ano(cidades: list, anos: list) -> pd.DataFrame:
         colunas_objetivas = [
             'Ciências da Natureza',

@@ -1,10 +1,30 @@
-import pandas as pd
-import plotly.express as px
 import streamlit as st
 from processamento_de_dados.CriarGrafico import CriarGrafico
 from processamento_de_dados.Dados import Dados
+from processamento_de_dados.Exportar import criar_tabelas
 from processamento_de_dados.Filtrar import Filtrar
+from config import Config
 
+st.set_page_config(page_title='Análise Temporal Notas do ENEM', layout='wide')
+
+anos = list(range(2009, 2025))
+anos_ausentes = [
+    ano
+    for ano in anos
+    if not (
+        Config.PASTA_SAIDA / f"MICRODADOS_ENEM_{ano}.parquet"
+    ).exists()
+]
+
+if anos_ausentes:
+    try:
+        with st.spinner(
+            f"Preparando dados dos anos: {', '.join(map(str, anos_ausentes))}..."
+        ):
+            Filtrar.filtrar_colunas(anos_ausentes)
+    except FileNotFoundError as erro:
+        st.error(str(erro))
+        st.stop()
 
 def carregar_css(caminho):
     with open(caminho) as f:
@@ -12,16 +32,11 @@ def carregar_css(caminho):
 
 # Carrega o estilo do arquivo externo
 carregar_css('style.css')
-Filtrar.filtrar_colunas()
-
-st.set_page_config(page_title='Análise Temporal Notas do ENEM', layout='wide')
 
 st.title('Análise Temporal Notas do ENEM')
 
 progress_bar = st.empty()
 status_text = st.empty()
-
-anos = list(range(2009, 2025))
 
 with st.sidebar.form(key='filtros_enem'):
     ano_inicio, ano_fim = st.slider(
@@ -107,8 +122,12 @@ disciplinas_provas = [
     'Linguagens e Códigos',
     'Matemática',
     'Redação',
+    'Município da Prova',
 ]
-dados_ano_selec = Dados.ler_ano(ano_de_foco, columns=disciplinas_provas)
+dados_ano_selec = Dados.ler_ano(
+    ano_de_foco, 
+    columns=disciplinas_provas,
+)
 estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
 
 st.header('Gráficos')
