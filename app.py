@@ -26,6 +26,8 @@ if anos_ausentes:
         st.error(str(erro))
         st.stop()
 
+criar_tabelas(recriar=False)
+
 def carregar_css(caminho):
     with open(caminho) as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
