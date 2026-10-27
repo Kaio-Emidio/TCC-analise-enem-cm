@@ -8,25 +8,31 @@ from config import Config
 st.set_page_config(page_title='Análise Temporal Notas do ENEM', layout='wide')
 
 anos = list(range(2009, 2025))
-anos_ausentes = [
-    ano
-    for ano in anos
-    if not (
-        Config.PASTA_SAIDA / f"MICRODADOS_ENEM_{ano}.parquet"
-    ).exists()
-]
+try:
+    with st.spinner('Verificando e preparando os microdados do ENEM...'):
+        status_dados = Filtrar.filtrar_colunas(anos)
+except (FileNotFoundError, ValueError) as erro:
+    st.error(str(erro))
+    st.stop()
 
-if anos_ausentes:
-    try:
-        with st.spinner(
-            f"Preparando dados dos anos: {', '.join(map(str, anos_ausentes))}..."
-        ):
-            Filtrar.filtrar_colunas(anos_ausentes)
-    except FileNotFoundError as erro:
-        st.error(str(erro))
-        st.stop()
+anos_sem_dependencia = status_dados["anos_sem_dependencia"]
+anos_sem_dados = status_dados["anos_sem_dados"]
 
-criar_tabelas(recriar=False)
+if anos_sem_dados:
+    st.warning(
+        'Microdados ausentes para os anos '
+        f'{", ".join(map(str, anos_sem_dados))}. Esses anos serão ignorados. '
+        'Para incluí-los, coloque os CSVs correspondentes em microdados_brutos.'
+    )
+
+if anos_sem_dependencia:
+    st.warning(
+        'Contagens por rede escolar indisponíveis para os anos '
+        f'{", ".join(map(str, anos_sem_dependencia))}. '
+        'Disponibilize os CSVs originais para reprocessar esses dados.'
+    )
+
+criar_tabelas(recriar=bool(status_dados["anos_processados"]))
 
 def carregar_css(caminho):
     with open(caminho) as f:

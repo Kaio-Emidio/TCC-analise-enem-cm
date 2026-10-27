@@ -21,6 +21,7 @@ class Config:
         "NU_NOTA_LC",
         "NU_NOTA_MT",
         "NU_NOTA_REDACAO",
+        "TP_DEPENDENCIA_ADM_ESC",
     ]
 
     NOVOS_NOMES = {
@@ -30,6 +31,21 @@ class Config:
         "NU_NOTA_LC": "Linguagens e Códigos",
         "NU_NOTA_MT": "Matemática",
         "NU_NOTA_REDACAO": "Redação",
+        "TP_DEPENDENCIA_ADM_ESC": "Dependência administrativa",
+    }
+
+    DEPENDENCIAS_ESCOLA = {
+        1: "Federal",
+        2: "Estadual",
+        3: "Municipal",
+        4: "Privada",
+    }
+
+    COLUNAS_CONTAGEM_REDE = {
+        1: "Participantes ENEM Federal",
+        2: "Participantes ENEM Estadual",
+        3: "Participantes ENEM Municipal",
+        4: "Participantes ENEM Privada",
     }
 
     CODIGOS_MUNICIPIOS = {

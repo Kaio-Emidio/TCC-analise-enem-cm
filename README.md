@@ -3,12 +3,21 @@ Aplicação web usando Streamlit para exibir um dashboard apresentando os dados 
 
 ## Exportação das tabelas
 Ao iniciar o dashboard, o projeto cria `Tabelas_graficos/medias_enem_por_municipio.xlsx`
-se o arquivo ainda não existir. A planilha contém uma aba para cada município e as
-médias anuais de cada prova, além da média geral.
+se o arquivo ainda não existir ou estiver sem as colunas de contagem. A planilha contém
+uma aba para cada município, as médias anuais de cada prova, a média geral e a
+quantidade de participantes do ENEM por dependência administrativa (federal, estadual,
+municipal e privada). Essa contagem considera o município onde o participante fez a
+prova e a dependência da escola informada no microdado; não representa o total de alunos
+matriculados no município.
 
 Para recriar a planilha, altere a chamada `criar_tabelas(recriar=False)` em `app.py`
 para `criar_tabelas(recriar=True)`. Depois da recriação, volte o parâmetro para `False`
 para que o arquivo existente seja reutilizado nas próximas inicializações.
+Os arquivos Parquet antigos são reprocessados automaticamente quando não contêm a nova
+coluna, desde que o CSV original esteja em `microdados_brutos`. O processamento lê os CSVs
+em blocos para reduzir o consumo de memória. Anos sem CSV e sem Parquet são ignorados e
+indicados no dashboard. Se um ano não possuir `TP_DEPENDENCIA_ADM_ESC`, as contagens por
+rede ficam indisponíveis e serão exibidas em branco.
 
 ## Pré-requisitos
 - Python 3.12 ou superior;

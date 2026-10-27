@@ -1,4 +1,7 @@
+from uuid import uuid4
+
 import pandas as pd
+from fastparquet import ParquetFile, write
 from config import Config
 
 class Filtrar:
@@ -11,45 +14,138 @@ class Filtrar:
                 Config.PASTA_ENTRADA / f"MICRODADOS_ENEM_{ano}.csv"
                 for ano in anos
             ]
-            arquivos_nao_encontrados = [
-                arquivo for arquivo in arquivos if not arquivo.exists()
-            ]
-            if arquivos_nao_encontrados:
-                nomes_ausentes = ", ".join(
-                    arquivo.name for arquivo in arquivos_nao_encontrados
-                )
-                raise FileNotFoundError(
-                    f"Não foi possível encontrar os arquivos CSV: {nomes_ausentes}"
-                )
 
         if not arquivos:
             print(f"Nenhum arquivo CSV encontrado em: '{Config.PASTA_ENTRADA}'")
 
+        arquivos_para_processar = []
+        anos_sem_dependencia = []
+        anos_sem_dados = []
+        anos_processados = []
+        colunas_requeridas = set(Config.NOVOS_NOMES.values())
+
         for arquivo in arquivos:
-            # Define o caminho de saída trocando a extensão .csv por .parquet
             caminho_final = Config.PASTA_SAIDA / f"{arquivo.stem}.parquet"
 
             if caminho_final.exists():
-                print(f"Ignorando '{arquivo.name}' (já processado como parquet).\n")
+                colunas_parquet = set(ParquetFile(str(caminho_final)).columns)
+                if colunas_requeridas.issubset(colunas_parquet):
+                    print(f"Ignorando '{arquivo.name}' (já processado como parquet).\n")
+                    continue
+                if not arquivo.exists():
+                    ano = int(arquivo.stem.rsplit("_", 1)[1])
+                    anos_sem_dependencia.append(ano)
+                    print(
+                        f"Aviso: '{arquivo.name}' não está disponível para atualizar "
+                        f"o Parquet; contagens por rede de {ano} ficarão indisponíveis."
+                    )
+                    continue
+                print(f"Atualizando '{caminho_final.name}' para incluir novas colunas...")
+            elif not arquivo.exists():
+                ano = int(arquivo.stem.rsplit("_", 1)[1])
+                anos_sem_dados.append(ano)
+                print(
+                    f"Aviso: '{arquivo.name}' e o Parquet correspondente não "
+                    "estão disponíveis; esse ano será ignorado."
+                )
                 continue
 
-            print(f"Processando '{arquivo.name}'...")
+            arquivos_para_processar.append(arquivo)
 
-            # Leitura otimizada e renomeação
-            tabela_filtrada = pd.read_csv(
+        for arquivo in arquivos_para_processar:
+            print(f"Processando '{arquivo.name}'...")
+            ano = int(arquivo.stem.rsplit("_", 1)[1])
+            caminho_final = Config.PASTA_SAIDA / f"{arquivo.stem}.parquet"
+
+            colunas_csv = pd.read_csv(
                 arquivo,
                 encoding="latin-1",
                 delimiter=";",
-                usecols=Config.COLUNAS_DE_INTERESSE,
-            ).rename(columns=Config.NOVOS_NOMES)
+                nrows=0,
+            ).columns
+            colunas_disponiveis = [
+                coluna
+                for coluna in Config.COLUNAS_DE_INTERESSE
+                if coluna in colunas_csv
+            ]
+            colunas_obrigatorias = [
+                coluna
+                for coluna in Config.COLUNAS_DE_INTERESSE
+                if coluna != "TP_DEPENDENCIA_ADM_ESC"
+            ]
+            colunas_ausentes = [
+                coluna for coluna in colunas_obrigatorias
+                if coluna not in colunas_csv
+            ]
+            if colunas_ausentes:
+                raise ValueError(
+                    f"Colunas obrigatórias ausentes em '{arquivo.name}': "
+                    f"{', '.join(colunas_ausentes)}"
+                )
 
-            # Exportação para Parquet com compressão snappy (padrão do pandas, super rápida)
-            tabela_filtrada.to_parquet(caminho_final, index=False)
+            if "TP_DEPENDENCIA_ADM_ESC" not in colunas_csv:
+                anos_sem_dependencia.append(ano)
+                print(
+                    f"Aviso: '{arquivo.name}' não contém TP_DEPENDENCIA_ADM_ESC; "
+                    "as contagens por rede ficarão indisponíveis neste ano."
+                )
 
-            # Impressão das colunas do arquivo recém-salvo
-            colunas_finais = list(tabela_filtrada.columns)
-            print(f"✓ Concluído: '{caminho_final.name}'")
+            temporary_path = (
+                Config.PASTA_SAIDA
+                / f"{arquivo.stem}.{uuid4().hex}.tmp.parquet"
+            )
+
+            tipos_colunas = {coluna: "float64" for coluna in colunas_disponiveis}
+            primeiro_bloco = True
+            colunas_finais = [
+                Config.NOVOS_NOMES[coluna] for coluna in colunas_disponiveis
+            ]
+            if "TP_DEPENDENCIA_ADM_ESC" not in colunas_disponiveis:
+                colunas_finais.append("Dependência administrativa")
+
+            try:
+                blocos = pd.read_csv(
+                    arquivo,
+                    encoding="latin-1",
+                    delimiter=";",
+                    usecols=colunas_disponiveis,
+                    dtype=tipos_colunas,
+                    chunksize=100_000,
+                )
+                for bloco in blocos:
+                    bloco = bloco.rename(columns=Config.NOVOS_NOMES)
+                    if "Dependência administrativa" not in bloco.columns:
+                        bloco["Dependência administrativa"] = float("nan")
+
+                    write(
+                        str(temporary_path),
+                        bloco,
+                        write_index=False,
+                        append=not primeiro_bloco,
+                    )
+                    primeiro_bloco = False
+
+                if primeiro_bloco:
+                    write(
+                        str(temporary_path),
+                        pd.DataFrame(columns=colunas_finais),
+                        write_index=False,
+                    )
+
+                temporary_path.replace(caminho_final)
+            finally:
+                if temporary_path.exists():
+                    temporary_path.unlink()
+
+            anos_processados.append(ano)
+            print(f"Concluído: '{caminho_final.name}'")
             print(f"  Colunas do arquivo final: {colunas_finais}\n")
+
+        return {
+            "anos_sem_dependencia": sorted(set(anos_sem_dependencia)),
+            "anos_sem_dados": sorted(set(anos_sem_dados)),
+            "anos_processados": sorted(set(anos_processados)),
+        }
 
     @staticmethod
     def filtrar_cidade(cidades: list, df: pd.DataFrame):
