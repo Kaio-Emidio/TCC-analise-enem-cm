@@ -165,7 +165,7 @@ class Filtrar:
                 pass
 
         # Garante tipo compatível na coluna antes da busca
-        df_filtrado = df[df['Município da Prova'].isin(codigos_municipios)].copy()
+        df_filtrado = df[df['Município da Prova'].isin(codigos_municipios)]
         
         return df_filtrado
 

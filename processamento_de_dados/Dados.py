@@ -14,7 +14,7 @@ class Dados:
             'Matemática',
         ]
         zeros_por_aluno = df[colunas_objetivas].eq(0).sum(axis=1)
-        return df.loc[zeros_por_aluno < 2].copy()
+        return df.loc[zeros_por_aluno < 2]
 
     @staticmethod
     def tratar_zeros_redacao_como_ausentes(df: pd.DataFrame) -> pd.DataFrame:
@@ -56,6 +56,34 @@ class Dados:
                 "contagens por rede indisponíveis."
             )
         return df
+
+    @staticmethod
+    def iterar_ano(ano, columns):
+        caminho_arquivo = Config.PASTA_SAIDA / f"MICRODADOS_ENEM_{ano}.parquet"
+        if not caminho_arquivo.exists():
+            raise FileNotFoundError(
+                f"Dados do ENEM de {ano} não encontrados em '{caminho_arquivo}'. "
+                "Coloque o CSV correspondente em 'microdados_brutos' e reinicie o app."
+            )
+
+        colunas_parquet = set(ParquetFile(str(caminho_arquivo)).columns)
+        colunas_ausentes = set(columns) - colunas_parquet
+        coluna_rede = 'Dependência administrativa'
+        colunas_ausentes_obrigatorias = colunas_ausentes - {coluna_rede}
+        if colunas_ausentes_obrigatorias:
+            raise ValueError(
+                f"Colunas ausentes no Parquet de {ano}: "
+                f"{', '.join(sorted(colunas_ausentes_obrigatorias))}"
+            )
+
+        colunas_disponiveis = [
+            coluna for coluna in columns if coluna in colunas_parquet
+        ]
+        arquivo = ParquetFile(str(caminho_arquivo))
+        for bloco in arquivo.iter_row_groups(columns=colunas_disponiveis):
+            if coluna_rede in colunas_ausentes:
+                bloco[coluna_rede] = float('nan')
+            yield bloco
 
     @staticmethod
     def estatistica(df):
@@ -124,6 +152,7 @@ class Dados:
         return df.groupby('Município', as_index=False)[colunas_notas].mean()
 
     @staticmethod
+    @st.cache_data
     def media_materias_por_cidade_ano(cidades: list, anos: list) -> pd.DataFrame:
         colunas_objetivas = [
             'Ciências da Natureza',
@@ -147,33 +176,82 @@ class Dados:
             if not caminho_arquivo.exists():
                 continue
 
-            df = Dados.ler_ano(ano, columns=colunas_necessarias)
-            
-            df = Filtrar.filtrar_cidade(cidades, df)
+            estatisticas_parciais = []
+            contagens_parciais = []
+            municipios = []
+            municipios_vistos = set()
+            municipios_com_dependencia = set()
 
-            if df.empty:
-                continue
+            for df in Dados.iterar_ano(ano, columns=colunas_necessarias):
+                df = Filtrar.filtrar_cidade(cidades, df)
+                if df.empty:
+                    continue
 
-            df['Município'] = df['Município da Prova'].map(
-                Filtrar.codigo_para_municipio()
-            )
-
-            dependencias = pd.to_numeric(
-                df['Dependência administrativa'],
-                errors='coerce',
-            ).map(Config.DEPENDENCIAS_ESCOLA)
-            contagens_por_muni = (
-                df.assign(_rede_escolar=dependencias)
-                .dropna(subset=['_rede_escolar'])
-                .groupby(['Município', '_rede_escolar'])
-                .size()
-                .unstack(fill_value=0)
-                .reindex(
-                    index=df['Município'].dropna().unique(),
-                    columns=list(Config.DEPENDENCIAS_ESCOLA.values()),
-                    fill_value=0,
+                df['Município'] = df['Município da Prova'].map(
+                    Filtrar.codigo_para_municipio()
                 )
-            )
+                for municipio in df['Município'].dropna().unique():
+                    if municipio not in municipios_vistos:
+                        municipios.append(municipio)
+                        municipios_vistos.add(municipio)
+
+                dependencias = pd.to_numeric(
+                    df['Dependência administrativa'],
+                    errors='coerce',
+                ).map(Config.DEPENDENCIAS_ESCOLA)
+                municipios_com_dependencia.update(
+                    dependencias[dependencias.notna()]
+                    .groupby(df['Município'])
+                    .any()
+                    .loc[lambda valores: valores]
+                    .index
+                )
+                contagens = (
+                    df.assign(_rede_escolar=dependencias)
+                    .dropna(subset=['_rede_escolar'])
+                    .groupby(['Município', '_rede_escolar'])
+                    .size()
+                )
+                if not contagens.empty:
+                    contagens_parciais.append(contagens)
+
+                df_notas = Dados.filtrar_alunos_por_notas_objetivas(df)
+                faltas = df_notas[colunas_objetivas].isna().sum(axis=1)
+                df_notas = df_notas.loc[faltas < 2]
+                if not df_notas.empty:
+                    estatisticas_notas = {}
+                    for coluna in colunas_notas:
+                        notas = df_notas[coluna]
+                        if coluna == 'Redação':
+                            notas = notas.mask(notas.eq(0))
+                        estatisticas_notas[coluna] = notas.groupby(
+                            df_notas['Município']
+                        ).agg(['sum', 'count'])
+                    estatisticas_parciais.append(
+                        pd.concat(estatisticas_notas, axis=1)
+                    )
+
+                del df, df_notas, dependencias
+
+            if contagens_parciais:
+                contagens_por_muni = (
+                    pd.concat(contagens_parciais)
+                    .groupby(level=[0, 1])
+                    .sum()
+                    .unstack(fill_value=0)
+                    .reindex(
+                        index=municipios,
+                        columns=list(Config.DEPENDENCIAS_ESCOLA.values()),
+                        fill_value=0,
+                    )
+                )
+            else:
+                contagens_por_muni = pd.DataFrame(
+                    0,
+                    index=municipios,
+                    columns=list(Config.DEPENDENCIAS_ESCOLA.values()),
+                )
+
             colunas_contagem_por_nome = {
                 nome: Config.COLUNAS_CONTAGEM_REDE[codigo]
                 for codigo, nome in Config.DEPENDENCIAS_ESCOLA.items()
@@ -181,26 +259,36 @@ class Dados:
             contagens_por_muni = contagens_por_muni.rename(
                 columns=colunas_contagem_por_nome
             )
-            possui_dependencias = (
-                dependencias.notna()
-                .groupby(df['Município'])
-                .any()
+            if municipios:
+                possui_dependencias = pd.Index(municipios).isin(
+                    municipios_com_dependencia
+                )
+                contagens_por_muni.loc[
+                    ~possui_dependencias, colunas_contagem
+                ] = float('nan')
+            contagens_por_muni = contagens_por_muni.reset_index(
+                names='Município'
             )
-            contagens_por_muni.loc[
-                ~possui_dependencias.reindex(contagens_por_muni.index, fill_value=False),
-                colunas_contagem,
-            ] = float('nan')
-            contagens_por_muni = contagens_por_muni.reset_index()
 
-            df_notas = Dados.filtrar_alunos_por_notas_objetivas(df)
-            df_notas = Dados.tratar_zeros_redacao_como_ausentes(df_notas)
-            faltas = df_notas[colunas_objetivas].isna().sum(axis=1)
-            df_notas = df_notas[faltas < 2]
-
-            medias_por_muni = df_notas.groupby(
-                'Município',
-                as_index=False,
-            )[colunas_notas].mean()
+            if estatisticas_parciais:
+                estatisticas = (
+                    pd.concat(estatisticas_parciais)
+                    .groupby(level=0)
+                    .sum()
+                )
+                medias_por_muni = pd.DataFrame(index=estatisticas.index)
+                for coluna in colunas_notas:
+                    medias_por_muni[coluna] = (
+                        estatisticas[(coluna, 'sum')]
+                        / estatisticas[(coluna, 'count')].replace(0, float('nan'))
+                    )
+                medias_por_muni = medias_por_muni.reset_index(
+                    names='Município'
+                )
+            else:
+                medias_por_muni = pd.DataFrame(
+                    columns=['Município'] + colunas_notas
+                )
             medias_por_muni['Geral'] = medias_por_muni[colunas_notas].mean(axis=1)
 
             resultado_ano = medias_por_muni.merge(
@@ -210,7 +298,6 @@ class Dados:
             )
             resultado_ano['Ano'] = str(ano)
             resultados.append(resultado_ano)
-            del df, df_notas, dependencias
 
         if not resultados:
             colunas_finais = (

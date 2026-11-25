@@ -4,7 +4,7 @@ from config import Config
 from processamento_de_dados.Dados import Dados
 
 def criar_tabelas(recriar: bool = False) -> Path:
-    anos = list(range(2009, 2025))
+    anos = list(range(2009, 2026))
     disciplinas = [
         'Ciências da Natureza',
         'Ciências Humanas',
