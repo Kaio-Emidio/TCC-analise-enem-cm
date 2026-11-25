@@ -1,3 +1,6 @@
+import math
+
+import numpy as np
 import pandas as pd
 import streamlit as st
 from fastparquet import ParquetFile
@@ -314,3 +317,88 @@ class Dados:
         df_final[cols_num] = df_final[cols_num].round(2)
 
         return df_final
+
+
+    # ------------------------------------------------------------------
+    # Medidas de tendência (Kendall e Sen)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _preparar_serie(x, y):
+        """Converte x e y em arrays float e descarta pares com valor ausente."""
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        validos = ~(np.isnan(x) | np.isnan(y))
+        return x[validos], y[validos]
+
+    @staticmethod
+    def kendall(x, y):
+        """Calcula o tau-b de Kendall e o p-valor do teste de Mann-Kendall.
+
+        x é o tempo (anos) e y é a série de notas médias. O tau varia de -1
+        (queda constante) a 1 (alta constante). Retorna (tau, p_valor), ou
+        (nan, nan) quando há menos de 3 pontos válidos.
+        """
+        x, y = Dados._preparar_serie(x, y)
+        n = len(x)
+        if n < 3:
+            return float('nan'), float('nan')
+
+        # Compara todos os pares (i < j): +1 concordante, -1 discordante.
+        i, j = np.triu_indices(n, k=1)
+        sinal_x = np.sign(x[j] - x[i])
+        sinal_y = np.sign(y[j] - y[i])
+        s = float((sinal_x * sinal_y).sum())
+
+        # tau-b: desconta os pares empatados em x e em y.
+        total_pares = n * (n - 1) / 2
+        denominador = math.sqrt(
+            (total_pares - (sinal_x == 0).sum())
+            * (total_pares - (sinal_y == 0).sum())
+        )
+        if denominador == 0:
+            return float('nan'), float('nan')
+        tau = s / denominador
+
+        # Teste de Mann-Kendall (aproximação normal, com correção de empates em y).
+        _, repeticoes = np.unique(y, return_counts=True)
+        correcao_empates = (
+            repeticoes * (repeticoes - 1) * (2 * repeticoes + 5)
+        ).sum()
+        variancia = (n * (n - 1) * (2 * n + 5) - correcao_empates) / 18
+        if variancia <= 0:
+            return float(tau), float('nan')
+
+        z = 0.0 if s == 0 else (s - np.sign(s)) / math.sqrt(variancia)
+        p_valor = math.erfc(abs(z) / math.sqrt(2))
+        return float(tau), float(p_valor)
+
+    @staticmethod
+    def inclinacao_sen(x, y):
+        """Inclinação de Sen: mediana das inclinações entre todos os pares de pontos.
+
+        O resultado está na unidade de y por unidade de x (pontos de nota por
+        ano). Retorna nan quando há menos de 2 pontos válidos.
+        """
+        x, y = Dados._preparar_serie(x, y)
+        if len(x) < 2:
+            return float('nan')
+
+        i, j = np.triu_indices(len(x), k=1)
+        delta_x = x[j] - x[i]
+        validos = delta_x != 0
+        if not validos.any():
+            return float('nan')
+
+        inclinacoes = (y[j] - y[i])[validos] / delta_x[validos]
+        return float(np.median(inclinacoes))
+
+    @staticmethod
+    def angulo_sen(x, y):
+        """Ângulo, em graus, da reta de Sen (arco tangente da inclinação).
+
+        Positivo indica tendência de alta e negativo, de queda.
+        """
+        inclinacao = Dados.inclinacao_sen(x, y)
+        if math.isnan(inclinacao):
+            return float('nan')
+        return float(math.degrees(math.atan(inclinacao)))

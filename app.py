@@ -50,6 +50,7 @@ TELAS = {
     'temporal': 'Exibição temporal',
     'focalizada': 'Exibição focalizada',
     'distribuicao': 'Distribuição das notas',
+    'tendencia': 'Kendall e Sen',
 }
 
 if 'tela_ativa' not in st.session_state:
@@ -84,7 +85,7 @@ def salvar_filtros():
 
 
 with st.sidebar.form(key='filtros_enem'):
-    if st.session_state['tela_ativa'] == 'temporal':
+    if st.session_state['tela_ativa'] in ('temporal', 'tendencia'):
         ano_inicio, ano_fim = st.slider(
             label='Selecione o intervalo de anos desejados',
             min_value=2009,
@@ -149,7 +150,7 @@ def abrir_tutorial():
         st.markdown("### 1. Sidebar (Filtros)")
         st.markdown("""
         * **Ano de Foco:** Define o ano analisado nos gráficos de **Radar**, **Violino** e nas **Métricas**;
-        * **Intervalo de Anos:** Define o período temporal do gráfico de Linha;
+        * **Intervalo de Anos:** Define o período temporal do gráfico de Linha e da tabela de Kendall e Sen;
         * **Municípios:** Escolher as cidades para comparar;
         * **Disciplina:** Alterne entre disciplinas específicas ou a média **Geral**.
         * *Lembre-se de clicar em **Aplicar Filtros** para atualizar!*
@@ -161,6 +162,7 @@ def abrir_tutorial():
         * **Gráfico de Linha:** Acompanhe o crescimento ou queda das médias ao longo do tempo.
         * **Radar:** Compare o desempenho relativo em cada área de conhecimento em um ano específico.
         * **Violino:** Analise a dispersão e concentração das notas dos alunos em um ano específico.
+        * **Kendall e Sen:** Tabela que mostra se a nota de cada município tende a subir ou cair ao longo dos anos.
         """)
 
     if st.button("Fechar", type="primary"):
@@ -190,82 +192,228 @@ for coluna, (chave, rotulo) in zip(colunas_botoes, TELAS.items()):
 
 st.divider()
 
+PROPORCAO_COLUNAS = [5, 2]  # conteúdo | texto explicativo (lado oposto ao da sidebar)
+
+DISCIPLINAS_TENDENCIA = [
+    'Geral',
+    'Ciências da Natureza',
+    'Ciências Humanas',
+    'Linguagens e Códigos',
+    'Matemática',
+    'Redação',
+]
+
+TEXTOS_EXPLICATIVOS = {
+    'temporal': (
+        'O que esta análise mostra',
+        """
+Mostra como a **nota média** dos participantes de cada município mudou ao longo dos anos.
+
+Cada linha é um município: linhas que **sobem** indicam melhora no desempenho e linhas que **descem** indicam queda.
+
+Use o filtro de disciplina para ver a média **Geral** ou de uma prova específica, e o intervalo de anos para ampliar ou reduzir o período.
+""",
+    ),
+    'focalizada': (
+        'O que esta análise mostra',
+        """
+Compara os municípios em **um único ano** (o ano de foco).
+
+No **radar**, cada ponta é uma área do conhecimento: quanto mais longe do centro, maior a nota média do município nela.
+
+As **métricas** à esquerda trazem a média de cada prova no ano de foco, calculada sobre todos os participantes dos microdados, e não só sobre os municípios selecionados.
+""",
+    ),
+    'distribuicao': (
+        'O que esta análise mostra',
+        """
+Mostra como as notas se **espalham** entre os participantes de cada município no ano de foco.
+
+A largura do "violino" indica onde há **mais participantes** concentrados. A caixa interna marca a **mediana** e os quartis.
+
+Formas mais alongadas indicam notas mais dispersas, ou seja, maior diferença entre os melhores e os piores resultados.
+""",
+    ),
+
+    'tendencia': (
+        'Como ler a tabela',
+        """
+    Cada linha resume a série de médias anuais de um município em uma disciplina, a mesma do gráfico de linha.
+
+    * **Kendall (τ):** vai de -1 a 1 e indica se as notas tendem a subir ou descer ao longo dos anos. Perto de 1, sobem quase todo ano; perto de -1, caem; perto de 0, não há direção clara.
+
+    * **p-valor:** abaixo de 0,05, a tendência é considerada estatisticamente significativa (teste de Mann-Kendall).
+
+    * **Inclinação de Sen:** variação típica da nota por ano. É a mediana das inclinações entre todos os pares de anos, por isso é pouco afetada por anos atípicos.
+
+    * **Ângulo de Sen:** a inclinação convertida em graus (arco tangente). Positivo indica tendência de alta; negativo, de queda.
+
+    ### Como o intervalo de anos influencia os resultados?
+
+    Os cálculos consideram somente os anos selecionados no filtro de intervalo. Ao ampliar ou reduzir esse período, os indicadores são recalculados e seus valores podem mudar.
+
+    Isso ocorre porque a tendência é analisada com base nas médias anuais do período escolhido. Assim, um município pode apresentar crescimento em determinado intervalo e uma tendência diferente quando analisado em um período mais amplo.
+
+    **Exemplo:** a tendência entre 2015 e 2018 pode ser diferente daquela observada entre 2015 e 2021.
+    """
+    ),
+
+}
+
+
+def painel_explicativo(chave):
+    titulo, texto = TEXTOS_EXPLICATIVOS[chave]
+    with st.container(border=True):
+        st.markdown(f'**{titulo}**')
+        st.markdown(texto)
+
+
 def tela_temporal():
     st.subheader('Exibição temporal')
-    anos_selecionados = list(range(ano_inicio, ano_fim + 1))
+    col_principal, col_explicacao = st.columns(PROPORCAO_COLUNAS, gap='large')
 
-    grafico_linha = CriarGrafico.linha(
-        cidades=cidades_selecionadas,
-        anos=anos_selecionados,
-        materia=disciplina_selecionada,
-    )
-    st.plotly_chart(grafico_linha, use_container_width=True)
+    with col_principal:
+        anos_selecionados = list(range(ano_inicio, ano_fim + 1))
+
+        grafico_linha = CriarGrafico.linha(
+            cidades=cidades_selecionadas,
+            anos=anos_selecionados,
+            materia=disciplina_selecionada,
+        )
+        st.plotly_chart(grafico_linha, use_container_width=True)
+
+    with col_explicacao:
+        painel_explicativo('temporal')
 
 
 def tela_focalizada():
     st.subheader('Exibição Focalizada')
+    col_principal, col_explicacao = st.columns(PROPORCAO_COLUNAS, gap='large')
 
-    disciplinas_provas = [
-        'Ciências da Natureza',
-        'Ciências Humanas',
-        'Linguagens e Códigos',
-        'Matemática',
-        'Redação',
-        'Município da Prova',
-    ]
-    dados_ano_selec = Dados.ler_ano(
-        ano_de_foco,
-        columns=disciplinas_provas,
-    )
-    estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
-
-    medias_municipais = Dados.medias_por_municipio(
-        cidades=cidades_selecionadas,
-        ano=ano_de_foco,
-    )
-
-    col_metricas, col_radar = st.columns([1, 3])
-
-    with col_metricas:
-        for nome in [
-            'Linguagens e Códigos',
-            'Ciências Humanas',
-            'Matemática',
+    with col_principal:
+        disciplinas_provas = [
             'Ciências da Natureza',
+            'Ciências Humanas',
+            'Linguagens e Códigos',
+            'Matemática',
             'Redação',
-        ]:
-            st.metric(
-                label=f'Média {nome}',
-                value=estatistica_ano_selec[nome]['media'],
-            )
+            'Município da Prova',
+        ]
+        dados_ano_selec = Dados.ler_ano(
+            ano_de_foco,
+            columns=disciplinas_provas,
+        )
+        estatistica_ano_selec = Dados.estatistica(dados_ano_selec)
 
-    with col_radar:
-        grafico_radar = CriarGrafico.radar(
-            medias_por_municipio=medias_municipais,
+        medias_municipais = Dados.medias_por_municipio(
+            cidades=cidades_selecionadas,
             ano=ano_de_foco,
         )
-        grafico_radar.update_layout(
-            margin=dict(l=40, r=40, t=40, b=40),
-            height=550,
-        )
-        st.plotly_chart(grafico_radar, use_container_width=True)
+
+        col_metricas, col_radar = st.columns([1, 3])
+
+        with col_metricas:
+            for nome in [
+                'Linguagens e Códigos',
+                'Ciências Humanas',
+                'Matemática',
+                'Ciências da Natureza',
+                'Redação',
+            ]:
+                st.metric(
+                    label=f'Média {nome}',
+                    value=estatistica_ano_selec[nome]['media'],
+                )
+
+        with col_radar:
+            grafico_radar = CriarGrafico.radar(
+                medias_por_municipio=medias_municipais,
+                ano=ano_de_foco,
+            )
+            grafico_radar.update_layout(
+                margin=dict(l=40, r=40, t=40, b=40),
+                height=550,
+            )
+            st.plotly_chart(grafico_radar, use_container_width=True)
+
+    with col_explicacao:
+        painel_explicativo('focalizada')
 
 
 def tela_distribuicao():
     st.subheader('Distribuição das Notas')
+    col_principal, col_explicacao = st.columns(PROPORCAO_COLUNAS, gap='large')
 
-    grafico_violino = CriarGrafico.violino(
-        cidades=cidades_selecionadas,
-        ano=ano_de_foco,
-        disciplina=disciplina_selecionada,
-    )
-    st.plotly_chart(grafico_violino, use_container_width=True)
+    with col_principal:
+        grafico_violino = CriarGrafico.violino(
+            cidades=cidades_selecionadas,
+            ano=ano_de_foco,
+            disciplina=disciplina_selecionada,
+        )
+        st.plotly_chart(grafico_violino, use_container_width=True)
+
+    with col_explicacao:
+        painel_explicativo('distribuicao')
+
+
+def tela_tendencia():
+    st.subheader('Tendência das notas: Kendall e Sen')
+    col_principal, col_explicacao = st.columns(PROPORCAO_COLUNAS, gap='large')
+
+    with col_principal:
+        anos_selecionados = list(range(ano_inicio, ano_fim + 1))
+        medias = Dados.media_materias_por_cidade_ano(
+            cidades=cidades_selecionadas,
+            anos=anos_selecionados,
+        )
+
+        if medias.empty:
+            st.info('Nenhum dado encontrado para os filtros selecionados.')
+        else:
+            linhas = []
+            for municipio, grupo in medias.groupby('Município'):
+                anos_do_municipio = grupo['Ano'].astype(int)
+                for disciplina in DISCIPLINAS_TENDENCIA:
+                    notas = grupo[disciplina]
+                    tau, p_valor = Dados.kendall(anos_do_municipio, notas)
+                    linhas.append({
+                        'Município': municipio,
+                        'Disciplina': disciplina,
+                        'Kendall (τ)': tau,
+                        'p-valor': p_valor,
+                        'Inclinação de Sen (pts/ano)': Dados.inclinacao_sen(
+                            anos_do_municipio, notas
+                        ),
+                        'Ângulo de Sen (°)': Dados.angulo_sen(
+                            anos_do_municipio, notas
+                        ),
+                    })
+
+            st.dataframe(
+                linhas,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    'Kendall (τ)': st.column_config.NumberColumn(format='%.3f'),
+                    'p-valor': st.column_config.NumberColumn(format='%.4f'),
+                    'Inclinação de Sen (pts/ano)': st.column_config.NumberColumn(
+                        format='%.2f'
+                    ),
+                    'Ângulo de Sen (°)': st.column_config.NumberColumn(
+                        format='%.2f'
+                    ),
+                },
+            )
+
+    with col_explicacao:
+        painel_explicativo('tendencia')
 
 
 RENDERIZADORES = {
     'temporal': tela_temporal,
     'focalizada': tela_focalizada,
     'distribuicao': tela_distribuicao,
+    'tendencia': tela_tendencia,
 }
 
 RENDERIZADORES[st.session_state['tela_ativa']]()
