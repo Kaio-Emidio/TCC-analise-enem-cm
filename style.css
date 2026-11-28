@@ -24,3 +24,15 @@ div[data-testid="stMetric"]:hover [data-testid="stMetricValue"] {
 div[data-testid="stMetric"]:hover [data-testid="stMetricLabel"] {
     color: #1e293b;
 }
+
+/* Centraliza os modais (@st.dialog) no meio da tela */
+div[data-testid="stDialog"] div:has(> div[role="dialog"]) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+}
+
+div[data-testid="stDialog"] div[role="dialog"] {
+    margin: 0 !important;
+}

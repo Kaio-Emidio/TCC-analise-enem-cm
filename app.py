@@ -34,14 +34,14 @@ if anos_sem_dependencia:
 
 criar_tabelas(recriar=bool(status_dados["anos_processados"]))
 
+
 def carregar_css(caminho):
     with open(caminho) as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
+
 # Carrega o estilo do arquivo externo
 carregar_css('style.css')
-
-st.title('Análise Temporal Notas do ENEM')
 
 progress_bar = st.empty()
 status_text = st.empty()
@@ -52,6 +52,25 @@ TELAS = {
     'distribuicao': 'Distribuição das notas',
     'tendencia': 'Kendall e Sen',
 }
+
+OPCOES_CIDADES = [
+    'Ceará-Mirim',
+    'Natal',
+    'Parnamirim',
+    'Extremoz',
+    'São Gonçalo do Amarante',
+    'Macaíba',
+    'Geral',
+]
+
+OPCOES_DISCIPLINAS = [
+    'Geral',
+    'Ciências da Natureza',
+    'Ciências Humanas',
+    'Linguagens e Códigos',
+    'Matemática',
+    'Redação',
+]
 
 if 'tela_ativa' not in st.session_state:
     st.session_state['tela_ativa'] = 'temporal'
@@ -77,131 +96,139 @@ if not st.session_state.get('_filtros_incluem_2025', False):
     st.session_state['filtro_ano_foco_salvo'] = 2025
     st.session_state['_filtros_incluem_2025'] = True
 
+def selecionar_tela(chave):
+    st.session_state['tela_ativa'] = chave
 
-def salvar_filtros():
-    for chave in FILTROS_PADRAO:
-        if chave in st.session_state:
-            st.session_state[f'{chave}_salvo'] = st.session_state[chave]
+@st.dialog('Filtros da análise')
+def abrir_filtros():
+    tela = st.session_state['tela_ativa']
 
+    with st.form(key='form_filtros_modal'):
+        if tela in ('temporal', 'tendencia'):
+            intervalo = st.slider(
+                label='Selecione o intervalo de anos desejados',
+                min_value=2009,
+                max_value=2025,
+                value=st.session_state['filtro_intervalo_anos_salvo'],
+            )
 
-with st.sidebar.form(key='filtros_enem'):
-    if st.session_state['tela_ativa'] in ('temporal', 'tendencia'):
-        ano_inicio, ano_fim = st.slider(
-            label='Selecione o intervalo de anos desejados',
-            min_value=2009,
-            max_value=2025,
-            key='filtro_intervalo_anos',
+        if tela in ('focalizada', 'distribuicao'):
+            ano_foco = st.selectbox(
+                label='Selecione o ano de foco',
+                options=anos,
+                index=anos.index(st.session_state['filtro_ano_foco_salvo']),
+            )
+
+        cidades = st.multiselect(
+            label='Selecione os municípios que deseja visualizar',
+            options=OPCOES_CIDADES,
+            default=st.session_state['filtro_cidades_salvo'],
         )
 
-    if st.session_state['tela_ativa'] in ('focalizada', 'distribuicao'):
-        ano_de_foco = st.selectbox(
-            label='Selecione o ano de foco',
-            options=anos,
-            key='filtro_ano_foco',
+        if tela in ('temporal', 'distribuicao'):
+            disciplina = st.selectbox(
+                label='Selecione a disciplina que deseja visualizar',
+                options=OPCOES_DISCIPLINAS,
+                index=OPCOES_DISCIPLINAS.index(
+                    st.session_state['filtro_disciplina_salvo']
+                ),
+            )
+
+        aplicou = st.form_submit_button(
+            label='Aplicar Filtros',
+            type='primary',
+            use_container_width=True,
         )
 
-    cidades_selecionadas = st.multiselect(
-        label='Selecione os municípios que deseja visualizar',
-        options=[
-            'Ceará-Mirim',
-            'Natal',
-            'Parnamirim',
-            'Extremoz',
-            'São Gonçalo do Amarante',
-            'Macaíba',
-            'Geral',
-        ],
-        key='filtro_cidades',
-    )
+    if aplicou:
+        if tela in ('temporal', 'tendencia'):
+            st.session_state['filtro_intervalo_anos_salvo'] = intervalo
+        if tela in ('focalizada', 'distribuicao'):
+            st.session_state['filtro_ano_foco_salvo'] = ano_foco
+        st.session_state['filtro_cidades_salvo'] = cidades
+        if tela in ('temporal', 'distribuicao'):
+            st.session_state['filtro_disciplina_salvo'] = disciplina
+        st.rerun()
 
-    if st.session_state['tela_ativa'] in ('temporal', 'distribuicao'):
-        disciplina_selecionada = st.selectbox(
-            label='Selecione a disciplina que deseja visualizar',
-            options=[
-                'Geral',
-                'Ciências da Natureza',
-                'Ciências Humanas',
-                'Linguagens e Códigos',
-                'Matemática',
-                'Redação',
-            ],
-            key='filtro_disciplina',
-        )
-    st.form_submit_button(
-        label='Aplicar Filtros',
-        type='primary',
-        on_click=salvar_filtros,
-    )
 
 @st.dialog("Dashboard ENEM", width="large")
 def abrir_tutorial():
     st.markdown("""
-    Esse dashboard foi desenvolvido para analisar o desempenho dos alunos de alguns dos municípios que fazem parte da Grande Natal no ENEM ao longo do tempo, 
-    permitindo comparações entre diferentes municípios e disciplinas. 
-    Esse projeto é desenvolvido por alunos do curso tecnico em informática do IFRN como projeto de conclusão de curso.
-    Os filtros da barra lateral variam de acordo com a tela selecionada.
+    Esse dashboard foi desenvolvido para analisar o desempenho dos alunos de alguns dos municípios que fazem parte da Grande Natal no ENEM ao longo do tempo,
+    permitindo comparações entre diferentes municípios e disciplinas.
+    Esse projeto é desenvolvido por alunos do curso técnico em informática do IFRN como projeto de conclusão de curso.
+    Os filtros disponíveis no botão **Filtros** variam de acordo com a tela selecionada.
     """)
-    
+
     st.markdown("---")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        st.markdown("### 1. Sidebar (Filtros)")
+        st.markdown("### 1. Filtros")
         st.markdown("""
-        * **Ano de Foco:** Define o ano analisado nos gráficos de **Radar**, **Violino** e nas **Métricas**;
-        * **Intervalo de Anos:** Define o período temporal do gráfico de Linha e da tabela de Kendall e Sen;
-        * **Municípios:** Escolher as cidades para comparar;
-        * **Disciplina:** Alterne entre disciplinas específicas ou a média **Geral**.
-        * *Lembre-se de clicar em **Aplicar Filtros** para atualizar!*
+- **Ano de Foco:** Define o ano analisado nos gráficos de **Radar**, **Violino** e nas **Métricas**;
+- **Intervalo de Anos:** Define o período temporal do gráfico de Linha e da tabela de Kendall e Sen;
+- **Municípios:** Escolher as cidades para comparar;
+- **Disciplina:** Alterne entre disciplinas específicas ou a média **Geral**.
+- *Lembre-se de clicar em **Aplicar Filtros** para atualizar!*
         """)
-        
+
     with col2:
         st.markdown("### 2. Gráficos Interativos")
         st.markdown("""
-        * **Gráfico de Linha:** Acompanhe o crescimento ou queda das médias ao longo do tempo.
-        * **Radar:** Compare o desempenho relativo em cada área de conhecimento em um ano específico.
-        * **Violino:** Analise a dispersão e concentração das notas dos alunos em um ano específico.
-        * **Kendall e Sen:** Tabela que mostra se a nota de cada município tende a subir ou cair ao longo dos anos.
+- **Gráfico de Linha:** Acompanhe o crescimento ou queda das médias ao longo do tempo.
+- **Radar:** Compare o desempenho relativo em cada área de conhecimento em um ano específico.
+- **Violino:** Analise a dispersão e concentração das notas dos alunos em um ano específico.
+- **Kendall e Sen:** Tabela que mostra se a nota de cada município tende a subir ou cair ao longo dos anos.
         """)
 
     if st.button("Fechar", type="primary"):
         st.rerun()
 
-with st.sidebar:
-    if st.button("Tutorial", use_container_width=True):
-        abrir_tutorial()
 
-def selecionar_tela(chave):
-    st.session_state['tela_ativa'] = chave
+# --- HEADER ---
+with st.container(border=True):
+    col_titulo, col_acoes = st.columns([4, 1], vertical_alignment='center')
+
+    with col_titulo:
+        st.title('Análise Temporal Notas do ENEM')
+        st.caption(
+            'Desempenho dos municípios da Grande Natal no ENEM (2009–2025) — '
+            'Projeto de Conclusão de Curso em Informática (IFRN).'
+        )
+
+    with col_acoes:
+        if st.button(
+            'Filtros',
+            icon=':material/filter_alt:',
+            use_container_width=True,
+        ):
+            abrir_filtros()
+
+        if st.button(
+            'Tutorial',
+            icon=':material/help_outline:',
+            use_container_width=True,
+        ):
+            abrir_tutorial()
+
+    colunas_botoes = st.columns(len(TELAS))
+    for coluna, (chave, rotulo) in zip(colunas_botoes, TELAS.items()):
+        ativa = st.session_state['tela_ativa'] == chave
+        coluna.button(
+            rotulo,
+            key=f'btn_{chave}',
+            use_container_width=True,
+            type='primary' if ativa else 'secondary',
+            on_click=selecionar_tela,
+            args=(chave,),
+        )
 
 
-st.header('Gráficos')
+PROPORCAO_COLUNAS = [5, 2]  # conteúdo | texto explicativo
 
-colunas_botoes = st.columns(len(TELAS))
-for coluna, (chave, rotulo) in zip(colunas_botoes, TELAS.items()):
-    ativa = st.session_state['tela_ativa'] == chave
-    coluna.button(
-        rotulo,
-        key=f'btn_{chave}',
-        use_container_width=True,
-        type='primary' if ativa else 'secondary',
-        on_click=selecionar_tela,
-        args=(chave,),
-    )
-
-st.divider()
-
-PROPORCAO_COLUNAS = [5, 2]  # conteúdo | texto explicativo (lado oposto ao da sidebar)
-
-DISCIPLINAS_TENDENCIA = [
-    'Geral',
-    'Ciências da Natureza',
-    'Ciências Humanas',
-    'Linguagens e Códigos',
-    'Matemática',
-    'Redação',
-]
+DISCIPLINAS_TENDENCIA = OPCOES_DISCIPLINAS
 
 TEXTOS_EXPLICATIVOS = {
     'temporal': (
@@ -234,30 +261,28 @@ A largura do "violino" indica onde há **mais participantes** concentrados. A ca
 Formas mais alongadas indicam notas mais dispersas, ou seja, maior diferença entre os melhores e os piores resultados.
 """,
     ),
-
     'tendencia': (
         'Como ler a tabela',
         """
-    Cada linha resume a série de médias anuais de um município em uma disciplina, a mesma do gráfico de linha.
+Cada linha resume a série de médias anuais de um município em uma disciplina, a mesma do gráfico de linha.
 
-    * **Kendall (τ):** vai de -1 a 1 e indica se as notas tendem a subir ou descer ao longo dos anos. Perto de 1, sobem quase todo ano; perto de -1, caem; perto de 0, não há direção clara.
+- **Kendall (τ):** vai de -1 a 1 e indica se as notas tendem a subir ou descer ao longo dos anos. Perto de 1, sobem quase todo ano; perto de -1, caem; perto de 0, não há direção clara.
 
-    * **p-valor:** abaixo de 0,05, a tendência é considerada estatisticamente significativa (teste de Mann-Kendall).
+- **p-valor:** abaixo de 0,05, a tendência é considerada estatisticamente significativa (teste de Mann-Kendall).
 
-    * **Inclinação de Sen:** variação típica da nota por ano. É a mediana das inclinações entre todos os pares de anos, por isso é pouco afetada por anos atípicos.
+- **Inclinação de Sen:** variação típica da nota por ano. É a mediana das inclinações entre todos os pares de anos, por isso é pouco afetada por anos atípicos.
 
-    * **Ângulo de Sen:** a inclinação convertida em graus (arco tangente). Positivo indica tendência de alta; negativo, de queda.
+- **Ângulo de Sen:** a inclinação convertida em graus (arco tangente). Positivo indica tendência de alta; negativo, de queda.
 
-    ### Como o intervalo de anos influencia os resultados?
+### Como o intervalo de anos influencia os resultados?
 
-    Os cálculos consideram somente os anos selecionados no filtro de intervalo. Ao ampliar ou reduzir esse período, os indicadores são recalculados e seus valores podem mudar.
+Os cálculos consideram somente os anos selecionados no filtro de intervalo. Ao ampliar ou reduzir esse período, os indicadores são recalculados e seus valores podem mudar.
 
-    Isso ocorre porque a tendência é analisada com base nas médias anuais do período escolhido. Assim, um município pode apresentar crescimento em determinado intervalo e uma tendência diferente quando analisado em um período mais amplo.
+Isso ocorre porque a tendência é analisada com base nas médias anuais do período escolhido. Assim, um município pode apresentar crescimento em determinado intervalo e uma tendência diferente quando analisado em um período mais amplo.
 
-    **Exemplo:** a tendência entre 2015 e 2018 pode ser diferente daquela observada entre 2015 e 2021.
-    """
+**Exemplo:** a tendência entre 2015 e 2018 pode ser diferente daquela observada entre 2015 e 2021.
+""",
     ),
-
 }
 
 
@@ -266,6 +291,13 @@ def painel_explicativo(chave):
     with st.container(border=True):
         st.markdown(f'**{titulo}**')
         st.markdown(texto)
+
+
+# Lê os filtros salvos para uso nas telas
+ano_inicio, ano_fim = st.session_state['filtro_intervalo_anos_salvo']
+ano_de_foco = st.session_state['filtro_ano_foco_salvo']
+cidades_selecionadas = st.session_state['filtro_cidades_salvo']
+disciplina_selecionada = st.session_state['filtro_disciplina_salvo']
 
 
 def tela_temporal():
